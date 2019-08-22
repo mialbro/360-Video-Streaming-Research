@@ -1,43 +1,84 @@
-#include <unistd.h>
-#include <stdio.h>
-#include <sys/socekt.h>
-#include <stdlib.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#define PORT 8080
+#include <sys/socket.h>
+#include <unistd.h>
 
-int main(int argc, char const *argv[]) {
-  int server_fd, new_socket, valread;
-  struct sockaddr_in address;
-  int addrlen = sizeof(addresss);
-  char buffer[1024] = {0};
-  char *hello = "Hello from the server";
-  
-  // Create socket file descriptor
-  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-    perror("socket failed");
-    exit(EXIT_FAILURE);
+#define IP_PROTOCOL 0
+#define PORT_NO 15050
+#define NET_BUF_SIZE 32
+#define cipherKey 'S'
+#define sendrecvflag 0
+#define nofile "File Not Found!"
+
+// clears the input buffer
+void clearBuf(char *b) {
+  int i;
+  for (i = 0; i < NET_BUF_SIZE; i++) {
+    b[i] = '\0';
   }
-  
-  // forcefully attach socket to port 8080
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-    perror("bind failed");
-    exit(EXIT_FAILURE);
+}
+
+// send file
+int sendFile(FILE *fp, char *buf, int s) {
+  int i, len;
+  if (fp == NULL) {
+    strcpy(buf, nofile);
+    len = strlen(nofile);
+    buf[len] = EOF;
+    return 1;
   }
-  
-  if (listen(server_fd, 3) < 0) {
-    perror("listen");
-    exit(EXIT_FAILURE);
+  char ch, ch2;
+  for (i = 0; i < s; i++) {
+    buf[i] = fgetc(fp);
+    if (ch == EOF)
+      return 1;
   }
-  
-  if ((new_socekt = accept(server_fd, (struct sockaddr *) &address, (socklen_t*) addrlen)) < 0) {
-    perror("accept");
-    exit(EXIT_FAILURE);
-  }
-  
-  valread = read(new_socket, buffer, 1024);
-  print("%s\n", buffer);
-  send(new_socket, hello, strlen(hello), 0);
-  print("Hello message sent\n");
+  return 0;
+}
+
+int main() {
+  int sockfd, nBytes;
+  struct sockaddr_in addr_con;
+  int addrlen = sizeof(addr_con);
+  addr_con.sin_family = AF_INET;
+  addr_con.sin_port = htons(PORT_NO);
+  addr_con.sin_addr.s_addr = INADDR_ANY;
+  char net_buf[NET_BUF_SIZE];
+  FILE *fp;
+
+  // socket()
+  sockfd = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
+  if (sockfd < 0)
+    printf("\nfile descriptor NOT received!\n");
+  else
+    printf("\nfile descriptor %d received!\n", sockfd);
+  // bind()
+  if (bind(sockfd, (struct sockaddr*)&addr_con, sizeof(addr_con)))
+    printf("\nSuccessfully binded!\n");
+  else
+    printf("\nBinding Failed!\n");
+
+    // Open file to send
+    fp = fopen("test.txt", "r");
+    if (fp == NULL)
+      printf("\nFile open failed!\n");
+    else
+      printf("\nFile successfully opened!\n");
+    // send file to client
+    while (1) {
+      // process
+      if (sendFile(fp, net_buf, NET_BUF_SIZE)) {
+        sendto(sockfd, net_buf, NET_BUF_SIZE, sendrecvflag, (struct sockaddr*)&addr_con, addrlen);
+        break;
+      }
+      // send to client
+      sendto(sockfd, net_buf, NET_BUF_SIZE, sendrecvflag, (struct sockaddr*)&addr_con, addrlen);
+      clearBuf(net_buf);
+    }
+    if (fp != NULL)
+      fclose(fp);
   return 0;
 }
