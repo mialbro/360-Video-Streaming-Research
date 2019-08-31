@@ -5,18 +5,60 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <math.h>
+
 #define PORT 8080
+#define ROWS 8
+#define COLUMNS 8
 
 struct thread_args {
 	int tile_num;
 };
 
-int sendGOP(struct sockaddr_in servaddr, int client_sock, char *buffer, int port) {
+int getRow(int tile_num) {
+	return floor(tile_num / COLUMNS);
+}
+
+int getColumn(int tile_num) {
+	return tile_num % COLUMNS;
+}
+
+char *int2String(int value) {
+	char res[5];
+	sprintf(res, "%d", value);
+	return res;
+}
+
+
+char *getFilename(int row, int column, int gop_num, int status) {
+	char filename[1024];
+
+	filename = "./files2/gop";
+	strcat(filename, int2char(gop_num));
+	strcat(filename, "/");
+	strcat(filename, "AngelSplit");
+	strcat(filename, int2char(row));
+	strcat(filename, "-");
+	strcat(filename, int2char(column));
+	strcat(filename, "/qp");
+	strcat(filename, int2char(status));
+	strcat(filename, "/str.bin");
+
+	return filename;
+}
+
+
+
+
+int sendGOP(struct sockaddr_in servaddr, int client_sock, char *buffer, int tile_num, int row, int column, int status) {
 	int packet_size = 0, bytes = 0, file_size = 0;
+	char *filename;
 	FILE *fp = 0;
 
+	filename = getFilename(row, column, gop_num, status);
+
 	/* open file to send */
-	fp = fopen(port, "r");
+	fp = fopen(filename, "r");
 	if (fp == NULL)
 		return 0;
 
@@ -42,7 +84,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, char *buffer, int port
 
 /* read the file to send and send it to server  */
 void *sendThread(void *arguments) {
-	int buffer_size = 64000, file_size = 0, client_sock = 0;
+	int buffer_size = 64000, file_size = 0, client_sock = 0, rwo = 0, column = 0, status = 0;
 	char buffer[buffer_size];
 	struct sockaddr_in servaddr;
 
@@ -60,7 +102,14 @@ void *sendThread(void *arguments) {
 	servaddr.sin_addr.s_addr = INADDR_ANY;
 
 	// int sendGOP(struct sockaddr_in servaddr, int client_sock, char *buffer, int file_size, FILE *fp)
-	sendGOP(servaddr, client_sock, buffer, PORT + args->tile_num);
+	row = getRow(args->tile_num);
+	column = getColumn(args->tile_num);
+
+	for (int i = 0; i < gop_count; i++) {
+		// read file to get the status (quality) of the tile to be selected
+		status = getStatus(i, args->tile_num);
+		sendGOP(servaddr, client_sock, buffer, args->tile_num, row, column, status);
+	}
 	return 0;
 }
 
