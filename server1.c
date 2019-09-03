@@ -5,24 +5,41 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <pthread.h>
+
 #define PORT 8080
+#define ROWS 8
+#define COLUMNS 8
+#define SPF 1.07
 
 struct thread_args {
 	int tile_num;
 };
 
-int getGOP(int server_sock, char *buffer, int buffer_size, int port) {
+char *setFilename(char *filename, char *gop_num, char *tile_num) {
+	memset(filename, 0, sizeof(filename));
+	strcat(filename, "./received/gop");
+	strcat(filename, gop_num);
+	strcat(filename, "_tile");
+	strcat(filename, tile_num);
+	strcat(filename, ".bin");
+}
+
+int getGOP(int server_sock, char *buffer, int buffer_size, char *tile_num, char *gop_num) {
 	int len = 0, bytes = 0;
+	char filename[1024];
 	FILE *fp = 0;
-	fp = fopen(port, "w");
+	fp = NULL;
 	struct sockaddr_in cliaddr;
 
+	setFilename(filename, gop_num, tile_num);
+	fp = fopen(filename, "w");
 	// wait to get first packet of data (block)
-	bytes = recvfrom(server_sock, buffer, buffer_size, 0, (struct sockaddr*)&cliaddr, &len);
+	if (strcmp(gop_num, "0") == 0)
+		bytes = recvfrom(server_sock, buffer, buffer_size, 0, (struct sockaddr*)&cliaddr, &len);	// block forever
 	/*	set timeout	after initial read  */
 	struct timeval timeout;
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 100000;
+	timeout.tv_usec = 0;
+	timeout.tv_sec = SPF;
 	if (setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
 		perror("Error");
 		return -1;
@@ -40,10 +57,10 @@ int getGOP(int server_sock, char *buffer, int buffer_size, int port) {
 }
 
 void *receiveThread(void *arguments) {
-		int server_sock = 0;
+		int server_sock = 0, gop_count = 10;
 		struct sockaddr_in servaddr;
 		int buffer_size = 64000;
-		char buffer[buffer_size];
+		char buffer[buffer_size], gop_num[5], tile_num[5];
 
 		struct thread_args *args = arguments;
 		// Creating socket file descriptor
@@ -60,14 +77,17 @@ void *receiveThread(void *arguments) {
 				perror("bind failed");
 				exit(EXIT_FAILURE);
 		}
-		// listen for messages at specified port
-		getGOP(server_sock, buffer, buffer_size, PORT + args->tile_num);
+
+		for (int i = 0; i < gop_count; i++) {
+			sprintf(gop_num, "%d", i);
+			sprintf(tile_num, "%d", args->tile_num);
+			// listen for messages at specified port
+			getGOP(server_sock, buffer, buffer_size, tile_num, gop_num);
+		}
 }
 
-// fuser -TERM 8080/udp
-
 int main(int argc, char const *argv[]) {
-		int tile_count = 60, i = 0;
+		int tile_count = 64, i = 0;
 		pthread_t thread_array[tile_count];		// array for each thread
 		struct thread_args args[tile_count];	// array for argument structs
 
