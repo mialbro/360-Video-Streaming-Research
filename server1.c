@@ -11,8 +11,8 @@
 #define COLUMNS 8
 #define USPF 1070000
 #define SPF 1.07
-#define TILE_COUNT 1
-#define GOP_COUNT 1
+#define TILE_COUNT 2
+#define GOP_COUNT 2
 #define BUFFER_SIZE 64000
 
 struct thread_args {
@@ -28,54 +28,41 @@ char *setFilename(char *filename, char *gop_num, char *tile_num) {
 	strcat(filename, ".bin");
 }
 
-int getGOP(int server_sock, char *tile_num, char *gop_num) {
-	printf("\nNNNEEEWWW\n");
-	int len = 0, bytes = 0;
-	time_t start_time = 0;
+int getGOP(int server_sock, char *tile_num) {
+	char header[] = {"\x00\x00\x00\x01@\x01\x0c\x01\xff\xff\x01`\x00\x00\x03\x00\x90\x00\x00\x03\x00\x00\x03\x00Z\x95\x98\t\x00\x00\x00\x01B\x01\x01\x01`\x00\x00\x03\x00\x90\x00\x00\x03\x00\x00\x03"};
+	char gop_num[5];
+	int len = 0, bytes = 0, i = 0;
 	char filename[1024], buffer[BUFFER_SIZE];
 	FILE *fp = NULL;
-	struct timeval timeout;
 
+	struct timeval timeout;
 	struct sockaddr_in cliaddr;
+
+	bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);	// block untill we get the first packet
 	// set the file name
+	sprintf(gop_num, "%d", i);
 	setFilename(filename, gop_num, tile_num);
 	fp = fopen(filename, "wb");
-	// wait to get first packet of data (block) if this is the first gop
-	// if we've already began the process of receiving gops
-	// then the initial read will also have a SPF timeout
-	if (strcmp(gop_num, "0") != 0)
-		start_time = time(NULL);
-	bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);	// block untill we get the first packet
-	// if we are receiving the first gop
-	// then start the SPF timeout after we get
-	// the first packet
-	if (strcmp(gop_num, "0") == 0)
-		start_time = time(NULL);
-	// get additional packets
-	int total = bytes;
-	while (bytes > 0 && (SPF-((double)time(NULL)-start_time)) > 0) {
-		// set timeout
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 1000000 * (SPF-((double)time(NULL) - start_time));
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
+	timeout.tv_usec = USPF;
+	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
+	while (bytes > 0) {
 		// write the received packet to a file
 		fwrite(buffer, 1, bytes, fp);
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
-		printf("\nA: timeout: %ld\n", timeout.tv_usec);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
-		printf("\ntotal bytes: %d, time used: %f\n", bytes, (((double)time(NULL)-start_time)));
-		printf("\nz\n");
-		total += bytes;
-		//printf("\ntotal bytes: %d -- bytes: %d -- time spent: %f\n", total, bytes, (double)(time(NULL) - start_time));
+		if (strstr(header, buffer) != NULL) {
+			fclose(fp);
+			i += 1;
+			// set the file name
+			sprintf(gop_num, "%d", i);
+			setFilename(filename, gop_num, tile_num);
+			if (bytes > 0)
+				fp = fopen(filename, "wb");
+		}
 	}
-	// write any remaining bytes to file before closing
-	if (bytes > 0)
-		fwrite(buffer, 1, bytes, fp);
-	fclose(fp);
-	timeout.tv_sec = 0;
-	timeout.tv_usec = 1000000 * SPF;
-	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 	return 0;
 }
 
@@ -101,12 +88,9 @@ void *receiveThread(void *arguments) {
 		/* listens for each successive frame
 			 in 1.07 second intervals
 		*/
-		for (i = 0; i < GOP_COUNT; i++) {
-			sprintf(gop_num, "%d", i);
-			sprintf(tile_num, "%d", args->tile_num);
-			// listen for messages at specified port
-			getGOP(server_sock, tile_num, gop_num);
-		}
+		sprintf(tile_num, "%d", args->tile_num);
+		// listen for messages at specified port
+		getGOP(server_sock, tile_num);
 }
 
 int main(int argc, char const *argv[]) {
