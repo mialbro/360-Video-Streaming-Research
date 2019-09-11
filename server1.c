@@ -122,7 +122,7 @@ void *receiveThread(void *arguments) {
 		// configure server socket
 		servaddr.sin_family = AF_INET;
 		servaddr.sin_port = htons(PORT + args->tile_num);
-		servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		servaddr.sin_addr.s_addr = inet_addr("169.254.48.43");
 		// bind the socket to the specified port
 		if (bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
 				perror("bind failed");
