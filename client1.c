@@ -13,7 +13,7 @@
 #define COLUMNS 8
 #define SPF 1.07
 #define TILE_COUNT 2
-#define GOP_COUNT 2
+#define GOP_COUNT 1
 #define BUFFER_SIZE 64000
 
 int hardcodedqp[] = {1 , 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 100, 100, 100, 100, 100, 1, 1, 1, 1, 100, 100, 100, 1, 1, 1, 1, 1, 100, 100, 100, 1, 1, 1, 1, 1, 100, 100, 100, 100, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
@@ -60,7 +60,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 
 	getFilename(filename, row, column, gop_num, status);
 
-	memset(buffer, 1, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	/* user is not looking at this tile so
 		 do not send it. just send empty packet
 	*/
@@ -93,9 +93,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		// make sure we don't take too long sending packet
 		// if we can't send the file quick enough (in 1.07 seconds)
 		// quit early!
-		printf("\nbytes: %d\n", bytes);
 		if ((double)(time(NULL) - start_time) >= SPF) {
-			printf("\nLeaving Early\n");
 			break;
 		}
 	}
@@ -134,7 +132,6 @@ void *sendThread(void *arguments) {
 		sendGOP(servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 		// sleep until next frame needs to be sent
 		// don't send additional tiles untill the current frame ends -> 1.07 seconds
-		printf("\nsleep for: %f seconds\n", SPF - (double)(time(NULL) - start_time));
 		sleep(SPF - (double)(time(NULL) - start_time));
 	}
 	return 0;
