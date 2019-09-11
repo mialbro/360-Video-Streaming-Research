@@ -8,7 +8,6 @@
 #include <math.h>
 #include <time.h>
 
-#define HOST 127.0.0.1
 #define PORT 8080
 #define ROWS 8
 #define COLUMNS 8
@@ -116,7 +115,7 @@ void *sendThread(void *arguments) {
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + args->tile_num);
-	servaddr.sin_addr.s_addr = htonl(HOST);
+	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
 	/*

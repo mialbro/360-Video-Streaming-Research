@@ -1,10 +1,12 @@
-#include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
-#include <stdlib.h>
-#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
 
 #define HOST 127.0.0.1
 #define PORT 8080
@@ -119,8 +121,8 @@ void *receiveThread(void *arguments) {
 		}
 		// configure server socket
 		servaddr.sin_family = AF_INET;
-		servaddr.sin_addr.s_addr = htonl(HOST);
 		servaddr.sin_port = htons(PORT + args->tile_num);
+		servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 		// bind the socket to the specified port
 		if (bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
 				perror("bind failed");
