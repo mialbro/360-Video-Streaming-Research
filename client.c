@@ -12,21 +12,73 @@
 #define ROWS 8
 #define COLUMNS 8
 #define SPF 1.07
-#define TILE_COUNT 2
+#define TILE_COUNT 64
 #define GOP_COUNT 1
+#define BW_COUNT 4
 #define BUFFER_SIZE 64000
 
-int hardcodedqp[] = {1 , 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 100, 100, 100, 100, 100, 1, 1, 1, 1, 100, 100, 100, 1, 1, 1, 1, 1, 100, 100, 100, 1, 1, 1, 1, 1, 100, 100, 100, 100, 1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
+struct GOP {
+  int *bw_vals;
+  int **tile_vals;
+};
 
 struct thread_args {
 	int tile_num;
+	int *bw;
+	struct GOP *gop;
 };
+
+struct GOP* setGOPStruct() {
+  int i = 0, j = 0, k = 0;
+  FILE *fp = NULL;
+  // start reading gop file
+  fp = fopen("./instruction_file/gop_data", "r");
+  struct GOP *gop = malloc(sizeof(struct GOP) * (GOP_COUNT+1));
+  // loop through the gops -> new struct for each one
+  for (i = 0; i < GOP_COUNT; i++) {
+    // allocate space for gop values
+    gop[i].bw_vals = malloc(BW_COUNT * sizeof(int));
+    // allocate space for the array of pointers that will each point to a
+    // different set (w/ 64 values) of tile values
+    gop[i].tile_vals = malloc(BW_COUNT * sizeof(int));
+    // loop through the different bandwidth sets in gop i
+    for (j = 0; j < BW_COUNT; j++) {
+      // allocate space for this row of data which represents the tile values (64)
+      gop[i].tile_vals[j] = malloc(TILE_COUNT * (sizeof(int)));
+      // get the bandwidth for the corresponding tile set
+      fscanf(fp, "%d", &gop[i].bw_vals[j]);
+      // loop through the tiles and store the values
+      for (k = 0; k < TILE_COUNT; k++) {
+        fscanf(fp, "%d", &gop[i].tile_vals[j][k]);
+      }
+    }
+  }
+	/*
+	for (i = 0; i < GOP_COUNT; i++) {
+		for (j = 0; j < BW_COUNT; j++) {
+			printf("%d  ", gop[i].bw_vals[j]);
+			for (k = 0; k < TILE_COUNT; k++) {
+				printf("%d ",gop[i].tile_vals[j][k]);
+			}
+			printf("\n");
+		}
+	}
+	*/
+  return gop;
+}
 
 /*
 	currently hardcoded since i need to wait until the instruction file is written
 */
-int getStatus(char *status, int gop, int tile_num) {
-	sprintf(status, "%d", hardcodedqp[tile_num]);
+int getStatus(char *status, int gop_num, struct thread_args *args) {
+	int tile_num = args->tile_num;
+	int bw = 0;
+
+	struct GOP *gop = args->gop;
+	//printf("\n%d\n", args->gop[gop].tile_vals[0][args->tile_num]);
+	int tile_val = gop[gop_num].tile_vals[0][tile_num];
+	//printf("%d ", tile_val);
+	sprintf(status, "%d", tile_val);
 }
 
 int setRowCol(char *row, char *column, int tile_num) {
@@ -40,7 +92,7 @@ int setRowCol(char *row, char *column, int tile_num) {
 // filename = getFilename(row, column, gop_num, status);
 char *getFilename(char *filename, char *row, char *column, char *gop_num, char *status) {
 	memset(filename, 0, sizeof(filename));
-	strcat(filename, "./files2/gop");
+	strcat(filename, "./video_files/gop");
 	strcat(filename, gop_num);
 	strcat(filename, "/");
 	strcat(filename, "AngelSplit");
@@ -53,10 +105,12 @@ char *getFilename(char *filename, char *row, char *column, char *gop_num, char *
 }
 
 int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
-	int packet_size = 0, bytes = 0, file_size = 0;
+	int packet_size = 0, bytes = 0, file_size = 0, len = 0;
 	time_t start_time;
-	char filename[1024], buffer[BUFFER_SIZE];
+	char filename[1024], buffer[BUFFER_SIZE], ack_buffer[1024];
 	FILE *fp = 0;
+
+	struct sockaddr_in cliaddr;
 
 	getFilename(filename, row, column, gop_num, status);
 
@@ -98,6 +152,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		}
 	}
 	fclose(fp);
+	printf("\nClosed file\n");
 }
 
 /* read the file to send and send it to server  */
@@ -115,7 +170,7 @@ void *sendThread(void *arguments) {
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + args->tile_num);
-	servaddr.sin_addr.s_addr = inet_addr("10.127.234.68"); 
+	servaddr.sin_addr.s_addr = inet_addr("10.127.234.68");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
 	/*
@@ -125,26 +180,33 @@ void *sendThread(void *arguments) {
 	*/
 	for (int i = 0; i < GOP_COUNT; i++) {
 		// read file to get the status (quality) of the tile to be selected
-		getStatus(status, i, args->tile_num);
+		getStatus(status, i, arguments);
 		start_time = time(NULL);
 		// don't send tile if the status is set to 100 -> user not looking in that location
 		sprintf(gop_num, "%d", i);
 		sendGOP(servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 		// sleep until next frame needs to be sent
 		// don't send additional tiles untill the current frame ends -> 1.07 seconds
-		sleep(SPF - (double)(time(NULL) - start_time));
+		//printf("\nsleep: %lf\n", SPF-(double)(time(NULL)-start_time));
+		if (SPF-(double)(time(NULL)-start_time) <= 0)
+			return 0;
+		else
+			sleep(SPF - (double)(time(NULL) - start_time));
 	}
 	return 0;
 }
-
 
 int main(int argc, char const *argv[]) {
 		int i = 0;
 		pthread_t thread_array[TILE_COUNT];
 		struct thread_args args[TILE_COUNT];
+		struct GOP *gop = NULL;
+
+		gop = setGOPStruct();
 
 		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
+			args[i].gop = gop;
 			/* create thread to send videos */
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
