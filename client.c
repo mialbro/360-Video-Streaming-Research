@@ -32,7 +32,7 @@ struct GOP* setGOPStruct() {
   int i = 0, j = 0, k = 0;
   FILE *fp = NULL;
   // start reading gop file
-  fp = fopen("./instruction_file/gop_data", "r");
+  fp = fopen("./gop/gop_data", "r");
   struct GOP *gop = malloc(sizeof(struct GOP) * (GOP_COUNT+1));
   // loop through the gops -> new struct for each one
   for (i = 0; i < GOP_COUNT; i++) {
@@ -170,7 +170,7 @@ void *sendThread(void *arguments) {
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + args->tile_num);
-	servaddr.sin_addr.s_addr = inet_addr("10.127.234.68");
+	servaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
 	/*
