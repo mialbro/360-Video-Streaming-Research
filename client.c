@@ -170,7 +170,7 @@ void *sendThread(void *arguments) {
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + args->tile_num);
-	servaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
+	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
 	/*
