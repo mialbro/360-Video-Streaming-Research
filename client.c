@@ -53,17 +53,6 @@ struct GOP* setGOPStruct() {
       }
     }
   }
-	/*
-	for (i = 0; i < GOP_COUNT; i++) {
-		for (j = 0; j < BW_COUNT; j++) {
-			printf("%d  ", gop[i].bw_vals[j]);
-			for (k = 0; k < TILE_COUNT; k++) {
-				printf("%d ",gop[i].tile_vals[j][k]);
-			}
-			printf("\n");
-		}
-	}
-	*/
   return gop;
 }
 
