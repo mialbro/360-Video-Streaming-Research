@@ -14,7 +14,7 @@
 #define COLUMNS 8
 #define USPF 1070000
 #define SPF 1.07
-#define TILE_COUNT 2
+#define TILE_COUNT 64
 #define GOP_COUNT 1
 #define BUFFER_SIZE 64000
 
@@ -60,7 +60,8 @@ char *setFilename(char *filename, char *gop_num, char *tile_num) {
 	strcat(filename, tile_num);
 	strcat(filename, ".bin");
 }
-// 0x00 0x00 0x00 0x01 0x40 0x01 0x0c 0x01 0xff 0xff 0x01 0x60 0x00 0x00 0x03 0x00
+
+
 int getGOP(int server_sock, char *tile_num) {
 	char header[] = {
 		0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
@@ -70,42 +71,87 @@ int getGOP(int server_sock, char *tile_num) {
 	};
 
 	char gop_num[5];
-	int len = 0, bytes = 0, i = 0, total = 0;
+	int len = 0, bytes = 0, curr_gop = 0, total = 0;
 	char filename[1024], buffer[BUFFER_SIZE];
 	FILE *fp = NULL;
 
-	struct timeval timeout;
 	struct sockaddr_in cliaddr;
-
+	struct timeval timeout;
+	
+	/*
 	memset(buffer, 0, sizeof(buffer));
 	bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);	// block untill we get the first packet
-	sprintf(gop_num, "%d", i);
+	sprintf(gop_num, "%d", curr_gop);
 	setFilename(filename, gop_num, tile_num);
 	fp = fopen(filename, "wb");
 
-	//timeout.tv_sec = 2;
-	//timeout.tv_usec = 0;
-	//setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	timeout.tv_sec = 2;
+	timeout.tv_usec = 0;
+	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 	total = bytes;
+	// assume that we're now reading in a new file
 	do {
+		printf("bytes: %d\n", bytes);
 		// write the received packet to a file
 		fwrite(buffer, 1, bytes, fp);
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
+		// read in a new packer
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
 		total += bytes;
-		// memmem(buffer, bytes, header, sizeof(header))
+		
+		// we just read in a new file
 		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
-		//if (strstr(buffer, header) != NULL) {
+			printf("\nNEW\n");
+			// close the previous file
 			fclose(fp);
-			i += 1;
+			// increment the gop counter
+			curr_gop += 1;
 			// set the file name
-			sprintf(gop_num, "%d", i);
+			sprintf(gop_num, "%d", curr_gop);
 			setFilename(filename, gop_num, tile_num);
+			// create the next file to start writing
 			fp = fopen(filename, "wb");
 			total = bytes;
 		}
-	} while (bytes > 0);
+	} while (curr_gop < GOP_COUNT);
+	*/
+	
+	timeout.tv_sec = 2;
+	timeout.tv_usec = 0;
+	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	
+	// read in the given file for every frame
+	while (curr_gop <= GOP_COUNT) {
+		memset(buffer, 0, sizeof(buffer));
+		// read in data
+		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
+		// we just read in a new file
+		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
+			if (curr_gop > 0) {
+				fclose(fp);
+			}
+			curr_gop += 1;
+			// create new file to begin saving to it
+			sprintf(gop_num, "%d", curr_gop-1);
+			setFilename(filename, gop_num, tile_num);
+			printf("\n%s\n", filename);
+			fp = fopen(filename, "wb");
+			fwrite(buffer, 1, bytes, fp);
+		}
+		else if (strcmp(buffer, "100") == 0) {
+			curr_gop += 1;
+		}
+		// continue saving to current file
+		else if (bytes > 0) {
+			fwrite(buffer, 1, bytes, fp);
+		}
+		else if (bytes == -1 && curr_gop > 0) {
+			//fclose(fp);
+			break;
+		}
+		printf("\ngot: %d\n", bytes);
+	}
 	return 0;
 }
 
@@ -122,7 +168,7 @@ void *receiveThread(void *arguments) {
 		// configure server socket
 		servaddr.sin_family = AF_INET;
 		servaddr.sin_port = htons(PORT + args->tile_num);
-		servaddr.sin_addr.s_addr = inet_addr("10.127.234.68");
+		servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 		// bind the socket to the specified port
 		if (bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
 				perror("bind failed");
@@ -141,7 +187,7 @@ int main(int argc, char const *argv[]) {
 		pthread_t thread_array[TILE_COUNT];		// array for each thread
 		struct thread_args args[TILE_COUNT];	// array for argument structs
 
-		/* create udp threads all listening for input */
+		/* create udp threads for listening at each port for the corresponding tile */
 		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
 			/* create thread to send videos */
