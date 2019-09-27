@@ -78,44 +78,6 @@ int getGOP(int server_sock, char *tile_num) {
 	struct sockaddr_in cliaddr;
 	struct timeval timeout;
 	
-	/*
-	memset(buffer, 0, sizeof(buffer));
-	bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);	// block untill we get the first packet
-	sprintf(gop_num, "%d", curr_gop);
-	setFilename(filename, gop_num, tile_num);
-	fp = fopen(filename, "wb");
-
-	timeout.tv_sec = 2;
-	timeout.tv_usec = 0;
-	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	total = bytes;
-	// assume that we're now reading in a new file
-	do {
-		printf("bytes: %d\n", bytes);
-		// write the received packet to a file
-		fwrite(buffer, 1, bytes, fp);
-		// clear the buffer
-		memset(buffer, 0, sizeof(buffer));
-		// read in a new packer
-		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
-		total += bytes;
-		
-		// we just read in a new file
-		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
-			printf("\nNEW\n");
-			// close the previous file
-			fclose(fp);
-			// increment the gop counter
-			curr_gop += 1;
-			// set the file name
-			sprintf(gop_num, "%d", curr_gop);
-			setFilename(filename, gop_num, tile_num);
-			// create the next file to start writing
-			fp = fopen(filename, "wb");
-			total = bytes;
-		}
-	} while (curr_gop < GOP_COUNT);
-	*/
 	
 	timeout.tv_sec = 2;
 	timeout.tv_usec = 0;
