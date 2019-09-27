@@ -118,8 +118,10 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	/* user is not looking at this tile so
 		 do not send it. just send empty packet
 	*/
+  //if (1) {
 	if (strcmp(status, "100") == 0) {
-		sendto(client_sock, buffer, 0, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    strcpy(buffer,"100");
+		sendto(client_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
 		return 0;
 	}
 	/* open file to send */
@@ -142,6 +144,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 			packet_size = file_size - bytes;
 		// send the packet and store the number of bytes that have been sent
 		bytes += sendto(client_sock, buffer, packet_size, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    printf("\nsent: %d\n", bytes);
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
 		// make sure we don't take too long sending packet
@@ -152,7 +155,6 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		}
 	}
 	fclose(fp);
-	printf("\nClosed file\n");
 }
 
 /* read the file to send and send it to server  */
@@ -170,13 +172,13 @@ void *sendThread(void *arguments) {
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + args->tile_num);
-	servaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
+	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
 	/*
 		use this port to listen for additional frames.
 		each time we will receive a tile from this row / column.
-		this represents a tile from every frame of the video.
+		this represents the same tile from every frame of the video.
 	*/
 	for (int i = 0; i < GOP_COUNT; i++) {
 		// read file to get the status (quality) of the tile to be selected
