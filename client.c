@@ -35,6 +35,8 @@ void *calculateBandwidth(void *arg) {
   int client_sock = 0, server_sock = 0, len = 0, bytes = 0, i = 0;
   struct timeval t0, t1;
 
+	struct timeval timeout;
+
   double *bandwidth = arg;
 
 	/* create client socket */
@@ -47,6 +49,9 @@ void *calculateBandwidth(void *arg) {
   if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
     printf("ERROR!\n");
   }
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 70000;
+  setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
   /* set the buffer to all one's */
   //strcpy(buffer, "NICE");
   memset(buffer, '1', sizeof(buffer));

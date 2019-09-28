@@ -21,28 +21,33 @@
 struct thread_args {
 	int tile_num;
 };
-		
-		
+
+
 
 void *ackThread() {
 	int server_sock = 0, client_sock = 0, len = 0;
 	struct sockaddr_in servaddr, cliaddr;
 	char buffer[BUFFER_SIZE];
-	
+
+		struct timeval timeout;
+
 	// create socket file descriptor
 	server_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	
+
 	// configure server socket
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + 100);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
-	
+
 	len = sizeof(cliaddr);
-	
+
 	// bind the socket to the specified port
 	bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 70000;
+	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+
 	while (1) {
 		int n = recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
 		buffer[n] = '\0';
@@ -52,7 +57,7 @@ void *ackThread() {
 	}
 }
 
-/* 
+/*
  * calculate the row / column value based on the tile number
  * and store value as a string
  */
@@ -120,12 +125,12 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 
 	struct sockaddr_in cliaddr;
 	struct timeval timeout;
-	
-	
+
+
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 70000;
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-	
+
 	// read in the given file for every frame
 	while (curr_gop <= GOP_COUNT) {
 		memset(buffer, 0, sizeof(buffer));
