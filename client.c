@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define PORT 8080
 #define ROWS 8
@@ -30,42 +30,36 @@ struct thread_args {
 
 void *calculateBandwidth(void *arg) {
   char buffer[BUFFER_SIZE];
+  double elapsed;
   struct sockaddr_in servaddr, cliaddr;
-  int client_sock = 0, server_sock = 0, len = 0, bytes = 0;
-  double stop_time = 0.0;
-  time_t start_time;
+  int client_sock = 0, server_sock = 0, len = 0, bytes = 0, i = 0;
+  struct timeval t0, t1;
 
   double *bandwidth = arg;
 
 	/* create client socket */
 	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
-  server_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	/* configure send socket -> we provide the address of other device */
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(100 + PORT);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 
-  /* configure receive socket -> we provide address for this device */
-  cliaddr.sin_family = AF_INET;
-  cliaddr.sin_port = htons(100 + PORT);
-  cliaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
-  // bind the socket to the specified port
-  if (bind(server_sock, (struct sockaddr *)&cliaddr, sizeof(cliaddr)) < 0) {
-      perror("bind failed");
-      exit(EXIT_FAILURE);
+  if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+    printf("ERROR!\n");
   }
   /* set the buffer to all one's */
-  strcpy(buffer, "NICE");
+  //strcpy(buffer, "NICE");
   memset(buffer, '1', sizeof(buffer));
   while (1) {
-    start_time = time(NULL);
-    sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-    printf("\nreceiving\n");
-    recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
-    printf("\ngot it\n");
-    stop_time = (double)(time(NULL) - start_time);
-    *bandwidth = (double)(sizeof(buffer)) / stop_time;
-    printf("bandwidth: %f\n", *bandwidth);
+    gettimeofday(&t0, 0);
+    for (i = 0; i < 4; i++ ) {
+      sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)NULL, sizeof(servaddr));
+      recvfrom(client_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
+      //printf("bandwidth: %f\n", *bandwidth);
+    }
+    gettimeofday(&t1, 0);
+    elapsed = ((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/(1000000.0);
+    *bandwidth = (sizeof(buffer)*4.0) / elapsed;
   }
 }
 
