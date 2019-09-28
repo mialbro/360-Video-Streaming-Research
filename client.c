@@ -13,7 +13,7 @@
 #define COLUMNS 8
 #define SPF 1.07
 #define TILE_COUNT 64
-#define GOP_COUNT 1
+#define GOP_COUNT 10
 #define BW_COUNT 4
 #define BUFFER_SIZE 64000
 
@@ -24,9 +24,49 @@ struct GOP {
 
 struct thread_args {
 	int tile_num;
-	int *bw;
+	double *bandwidth;
 	struct GOP *gop;
 };
+
+void *calculateBandwidth(void *arg) {
+  char buffer[BUFFER_SIZE];
+  struct sockaddr_in servaddr, cliaddr;
+  int client_sock = 0, server_sock = 0, len = 0, bytes = 0;
+  double stop_time = 0.0;
+  time_t start_time;
+
+  double *bandwidth = arg;
+
+	/* create client socket */
+	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
+  server_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	/* configure send socket -> we provide the address of other device */
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(100 + PORT);
+	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
+
+  /* configure receive socket -> we provide address for this device */
+  cliaddr.sin_family = AF_INET;
+  cliaddr.sin_port = htons(100 + PORT);
+  cliaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
+  // bind the socket to the specified port
+  if (bind(server_sock, (struct sockaddr *)&cliaddr, sizeof(cliaddr)) < 0) {
+      perror("bind failed");
+      exit(EXIT_FAILURE);
+  }
+  /* set the buffer to all one's */
+  memset(buffer, '1', sizeof(buffer));
+  while (1) {
+    start_time = time(NULL);
+    sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    printf("\nreceiving\n");
+    recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
+    printf("\ngot it\n");
+    stop_time = (double)(time(NULL) - start_time);
+    *bandwidth = (double)(sizeof(buffer)) / stop_time;
+    printf("bandwidth: %f\n", *bandwidth);
+  }
+}
 
 struct GOP* setGOPStruct() {
   int i = 0, j = 0, k = 0;
@@ -56,17 +96,16 @@ struct GOP* setGOPStruct() {
   return gop;
 }
 
-/*
-	currently hardcoded since i need to wait until the instruction file is written
-*/
+/* get the tile value to send for the current gop */
 int getStatus(char *status, int gop_num, struct thread_args *args) {
-	int tile_num = args->tile_num;
-	int bw = 0;
+  struct GOP *gop = NULL;
+  int tile_num = 0, tile_val = 0;
+  double bandwidth = 0.0;
 
-	struct GOP *gop = args->gop;
-	//printf("\n%d\n", args->gop[gop].tile_vals[0][args->tile_num]);
-	int tile_val = gop[gop_num].tile_vals[0][tile_num];
-	//printf("%d ", tile_val);
+  gop = args->gop;
+  bandwidth = *args->bandwidth;
+	tile_num = args->tile_num;
+	tile_val = gop[gop_num].tile_vals[0][tile_num];
 	sprintf(status, "%d", tile_val);
 }
 
@@ -93,6 +132,9 @@ char *getFilename(char *filename, char *row, char *column, char *gop_num, char *
 	strcat(filename, "/str.bin");
 }
 
+/*
+sends the same tile for every frame
+*/
 int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
 	int packet_size = 0, bytes = 0, file_size = 0, len = 0;
 	time_t start_time;
@@ -107,7 +149,6 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	/* user is not looking at this tile so
 		 do not send it. just send empty packet
 	*/
-  //if (1) {
 	if (strcmp(status, "100") == 0) {
     strcpy(buffer,"100");
 		sendto(client_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
@@ -133,7 +174,6 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 			packet_size = file_size - bytes;
 		// send the packet and store the number of bytes that have been sent
 		bytes += sendto(client_sock, buffer, packet_size, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-    printf("\nsent: %d\n", bytes);
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
 		// make sure we don't take too long sending packet
@@ -189,21 +229,27 @@ void *sendThread(void *arguments) {
 
 int main(int argc, char const *argv[]) {
 		int i = 0;
-		pthread_t thread_array[TILE_COUNT];
+    double *bandwidth = NULL;
+		pthread_t thread_array[TILE_COUNT], bandwidth_thread;
 		struct thread_args args[TILE_COUNT];
 		struct GOP *gop = NULL;
 
 		gop = setGOPStruct();
-
+    bandwidth = (double*)malloc(1*sizeof(int));
 		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
+      // store adress of bandwidth value
+      args[i].bandwidth = bandwidth;
 			/* create thread to send videos */
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
+    /* create thread to calculate bandwidth */
+    pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
 		/* wait for threads to end */
 		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
+    pthread_join(bandwidth_thread, NULL);
 		return 0;
 }
