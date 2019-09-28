@@ -55,6 +55,7 @@ void *calculateBandwidth(void *arg) {
       exit(EXIT_FAILURE);
   }
   /* set the buffer to all one's */
+  strcpy(buffer, "NICE");
   memset(buffer, '1', sizeof(buffer));
   while (1) {
     start_time = time(NULL);
