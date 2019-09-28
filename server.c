@@ -38,23 +38,17 @@ void *ackThread() {
 	servaddr.sin_port = htons(PORT + 100);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 	
-	// configure server socket
-	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_port = htons(PORT + 100);
-	cliaddr.sin_addr.s_addr = inet_addr("192.168.0.1");
+	len = sizeof(cliaddr);
 	
 	// bind the socket to the specified port
-	if (bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-		perror("bind failed");
-		exit(EXIT_FAILURE);
-	}
+	bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr));
 	
 	while (1) {
-		recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
-		printf("\n1\n");
-		sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, sizeof(servaddr));
-		printf("\n1\n");
-		memset(buffer, 1, sizeof(buffer));
+		int n = recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
+		buffer[n] = '\0';
+		sendto(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, sizeof(servaddr));
+
+		memset(buffer, 0, sizeof(buffer));
 	}
 }
 
