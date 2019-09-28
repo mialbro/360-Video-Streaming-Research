@@ -58,6 +58,7 @@ void *calculateBandwidth(void *arg) {
   while (1) {
     gettimeofday(&t0, 0);
     for (i = 0; i < 4; i++ ) {
+      //printf("\n%d\n",i);
       sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)NULL, sizeof(servaddr));
       recvfrom(client_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
       //printf("bandwidth: %f\n", *bandwidth);
@@ -65,6 +66,7 @@ void *calculateBandwidth(void *arg) {
     gettimeofday(&t1, 0);
     elapsed = ((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/(1000000.0);
     *bandwidth = (sizeof(buffer)*4.0) / elapsed;
+    printf("\n%f\n", *bandwidth);
   }
 }
 
