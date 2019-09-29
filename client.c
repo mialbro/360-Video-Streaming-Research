@@ -30,14 +30,18 @@ struct thread_args {
 
 void *calculateBandwidth(void *arg) {
   char buffer[BUFFER_SIZE];
-  double elapsed;
-  struct sockaddr_in servaddr, cliaddr;
-  int client_sock = 0, server_sock = 0, len = 0, bytes = 0, i = 0;
+  double elapsed = 0.0;
+  double *bandwidth = NULL;
   struct timeval t0, t1;
+  struct timeval timeout;
+  struct sockaddr_in servaddr, cliaddr;
+  int client_sock = 0, len = 0, bytes = 0, i = 0;
 
-	struct timeval timeout;
+  // set timeout
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 70000;
 
-  double *bandwidth = arg;
+  *bandwidth = arg;
 
 	/* create client socket */
 	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -49,27 +53,34 @@ void *calculateBandwidth(void *arg) {
   if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
     printf("ERROR!\n");
   }
-  timeout.tv_sec = 1;
-  timeout.tv_usec = 70000;
+
   setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-  /* set the buffer to all one's */
-  //strcpy(buffer, "NICE");
+
   memset(buffer, '1', sizeof(buffer));
+
+  // send packet to server then listen for response to calculate bandwidth
   while (1) {
+    // get the start time
     gettimeofday(&t0, 0);
-    for (i = 0; i < 4; i++ ) {
-      //printf("\n%d\n",i);
-      sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)NULL, sizeof(servaddr));
-      recvfrom(client_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
-      //printf("bandwidth: %f\n", *bandwidth);
+    // send syn to the server
+    sendto(client_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)NULL, sizeof(servaddr));
+    // wait for ack from the server
+    bytes = recvfrom(client_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
+    // check to make sure we got all our data back
+    if (bytes == BUFFER_SIZE) {
+      // get the end time
+      gettimeofday(&t1, 0);
+      // calculate the total time it took to send the data
+      elapsed = ((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/(1000000.0 * 2.0);
+      // calculate the bandwidth
+      *bandwidth = (sizeof(buffer) + 28) / elapsed;
+      // display the calculated bandwidth
+      printf("\nbandwidth: %f\n", *bandwidth);
     }
-    gettimeofday(&t1, 0);
-    elapsed = ((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/(1000000.0);
-    *bandwidth = (sizeof(buffer)*4.0) / elapsed;
-    printf("\n%f\n", *bandwidth);
   }
 }
 
+/* read in gop  file */
 struct GOP* setGOPStruct() {
   int i = 0, j = 0, k = 0;
   FILE *fp = NULL;

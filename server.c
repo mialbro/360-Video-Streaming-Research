@@ -22,38 +22,37 @@ struct thread_args {
 	int tile_num;
 };
 
-
-
 void *ackThread() {
-	int server_sock = 0, client_sock = 0, len = 0;
-	struct sockaddr_in servaddr, cliaddr;
+	int server_sock = 0, len = 0, n = 0;
 	char buffer[BUFFER_SIZE];
+	struct sockaddr_in servaddr, cliaddr;
+	struct timeval timeout;
 
-		struct timeval timeout;
+	// set timeout to 1.07 seconds
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 70000;
+	len = sizeof(cliaddr);
 
 	// create socket file descriptor
 	server_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
 	// configure server socket
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + 100);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 
-	len = sizeof(cliaddr);
-
 	// bind the socket to the specified port
 	bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 70000;
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
+	// listen for packet from client then send response to client to calculate bandwidth
 	while (1) {
-		int n = recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
-		buffer[n] = '\0';
-		sendto(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, sizeof(servaddr));
-
-		memset(buffer, 0, sizeof(buffer));
+		n = recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
+		if (n == BUFFER_SIZE) {
+			buffer[n] = '\0';
+			sendto(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, sizeof(servaddr));
+			memset(buffer, 0, sizeof(buffer));
+		}
 	}
 }
 
@@ -75,25 +74,21 @@ void setRowCol(char *row, char *col, int tile_num) {
  * NULL if the substring is not found.
  */
 void *memmem(const void *haystack, size_t hlen, const void *needle, size_t nlen) {
-    int needle_first;
-    const void *p = haystack;
-    size_t plen = hlen;
+	int needle_first;
+  const void *p = haystack;
+  size_t plen = hlen;
 
-    if (!nlen)
-        return NULL;
-
-    needle_first = *(unsigned char *)needle;
-
-    while (plen >= nlen && (p = memchr(p, needle_first, plen - nlen + 1)))
-    {
-        if (!memcmp(p, needle, nlen))
-            return (void *)p;
-
-        p++;
-        plen = hlen - (p - haystack);
-    }
-
-    return NULL;
+  if (!nlen)
+  	return NULL;
+		
+  needle_first = *(unsigned char *)needle;
+  while (plen >= nlen && (p = memchr(p, needle_first, plen - nlen + 1))) {
+    if (!memcmp(p, needle, nlen))
+      return (void *)p;
+    p++;
+    plen = hlen - (p - haystack);
+  }
+  return NULL;
 }
 
 char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char *col) {
@@ -145,7 +140,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			// create new file to begin saving to it
 			sprintf(gop_num, "%d", curr_gop-1);
 			setFilename(filename, gop_num, tile_num, row, col);
-			//printf("\n%s\n", filename);
 			fp = fopen(filename, "wb");
 			fileOpen = 1;
 			fwrite(buffer, 1, bytes, fp);
