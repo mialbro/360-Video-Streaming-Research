@@ -2,3 +2,5 @@ video_files
 received
 server
 client
+server.o
+client.o
