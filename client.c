@@ -30,7 +30,7 @@ struct thread_args {
 
 void *calculateBandwidth(void *arg) {
   char buffer[BUFFER_SIZE];
-  double elapsed = 0.0;
+  double elapsed = 0.0, data = 0.0;
   double *bandwidth = NULL;
   struct timeval t0, t1;
   struct timeval timeout;
@@ -71,11 +71,14 @@ void *calculateBandwidth(void *arg) {
       // get the end time
       gettimeofday(&t1, 0);
       // calculate the total time it took to send the data
-      elapsed = ((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/(1000000.0 * 2.0);
-      // calculate the bandwidth
-      *bandwidth = (sizeof(buffer) + 28) / elapsed;
+      elapsed = ((t1.tv_sec-t0.tv_sec)*1000000.0 + t1.tv_usec-t0.tv_usec) / 1000000.0;
+      elapsed = elapsed / 2.0;
+	    
+      // calculate the data amount (Megabits)
+      data = (sizeof(buffer) + 28.0) / 125000.0;
+      *bandwidth = data / elapsed;	// Bytes / Second
       // display the calculated bandwidth
-      printf("\nbandwidth: %f\n", *bandwidth);
+      printf("\nelapsed time: %f, bandwidth: %f\n", *bandwidth, data);
     }
   }
 }
