@@ -41,7 +41,7 @@ void *calculateBandwidth(void *arg) {
   timeout.tv_sec = 1;
   timeout.tv_usec = 70000;
 
-  *bandwidth = arg;
+  bandwidth = arg;
 
 	/* create client socket */
 	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -73,7 +73,7 @@ void *calculateBandwidth(void *arg) {
       // calculate the total time it took to send the data
       elapsed = ((t1.tv_sec-t0.tv_sec)*1000000.0 + t1.tv_usec-t0.tv_usec) / 1000000.0;
       elapsed = elapsed / 2.0;
-	    
+
       // calculate the data amount (Megabits)
       data = (sizeof(buffer) + 28.0) / 125000.0;
       *bandwidth = data / elapsed;	// Bytes / Second
