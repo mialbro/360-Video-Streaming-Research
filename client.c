@@ -53,9 +53,7 @@ void *calculateBandwidth(void *arg) {
   if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
     printf("ERROR!\n");
   }
-
   setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
-
   memset(buffer, '1', sizeof(buffer));
 
   // send packet to server then listen for response to calculate bandwidth
@@ -73,7 +71,6 @@ void *calculateBandwidth(void *arg) {
       // calculate the total time it took to send the data
       elapsed = ((t1.tv_sec-t0.tv_sec)*1000000.0 + t1.tv_usec-t0.tv_usec) / 1000000.0;
       elapsed = elapsed / 2.0;
-
       // calculate the data amount (Megabits)
       data = (sizeof(buffer) + 28.0) / 125000.0;
       *bandwidth = data / elapsed;	// Bytes / Second
@@ -117,7 +114,6 @@ int getStatus(char *status, int gop_num, struct thread_args *args) {
   struct GOP *gop = NULL;
   int tile_num = 0, tile_val = 0;
   double bandwidth = 0.0;
-
   gop = args->gop;
   bandwidth = *args->bandwidth;
 	tile_num = args->tile_num;
@@ -158,9 +154,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	FILE *fp = 0;
 
 	struct sockaddr_in cliaddr;
-
 	getFilename(filename, row, column, gop_num, status);
-
 	memset(buffer, 0, sizeof(buffer));
 	/* user is not looking at this tile so
 		 do not send it. just send empty packet

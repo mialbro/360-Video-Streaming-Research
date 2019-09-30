@@ -35,7 +35,6 @@ void *ackThread() {
 
 	// create socket file descriptor
 	server_sock = socket(AF_INET, SOCK_DGRAM, 0);
-
 	// configure server socket
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(PORT + 100);
@@ -80,7 +79,7 @@ void *memmem(const void *haystack, size_t hlen, const void *needle, size_t nlen)
 
   if (!nlen)
   	return NULL;
-		
+
   needle_first = *(unsigned char *)needle;
   while (plen >= nlen && (p = memchr(p, needle_first, plen - nlen + 1))) {
     if (!memcmp(p, needle, nlen))
@@ -106,6 +105,7 @@ char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char
 
 
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
+	// used to recognize if we got the start of a new frame
 	char header[] = {
 		0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
 		0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5a, 0x95, 0x98, 0x09, 0x00, 0x00, 0x00, 0x01,
