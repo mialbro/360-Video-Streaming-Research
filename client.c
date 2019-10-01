@@ -28,6 +28,21 @@ struct thread_args {
 	struct GOP *gop;
 };
 
+int selectTransferRate(double bandwidth, int bw_vals[]) {
+  int i = 0, rateIndex = 0;
+  double smallest_diff = 0.0;
+  // set the transfer rate as the first bw value
+  smallest_diff = abs(bandwidth - bw_vals[0]);
+  // loop through the available bandwidths and select the one closes to our calculated value
+  for (i = 0; i < BW_COUNT; i++) {
+    if (abs(bandwidth - bw_vals[i]) < smallest_diff) {
+      smallest_diff = abs(bandwidth - bw_vals[i]);
+      rateIndex = i;
+    }
+  }
+  return rateIndex;
+}
+
 void *calculateBandwidth(void *arg) {
   char buffer[BUFFER_SIZE];
   double elapsed = 0.0, data = 0.0;
@@ -72,10 +87,10 @@ void *calculateBandwidth(void *arg) {
       elapsed = ((t1.tv_sec-t0.tv_sec)*1000000.0 + t1.tv_usec-t0.tv_usec) / 1000000.0;
       elapsed = elapsed / 2.0;
       // calculate the data amount (Megabits)
-      data = (sizeof(buffer) + 28.0) / 125000.0;
+      data = (BUFFER_SIZE + 28.0) / 125000.0;
       *bandwidth = data / elapsed;	// Bytes / Second
       // display the calculated bandwidth
-      printf("\nelapsed time: %f, bandwidth: %f\n", *bandwidth, data);
+      //printf("\nelapsed time: %f, bandwidth: %f\n", elapsed, *bandwidth);
     }
   }
 }
@@ -112,14 +127,25 @@ struct GOP* setGOPStruct() {
 /* get the tile value to send for the current gop */
 int getStatus(char *status, int gop_num, struct thread_args *args) {
   struct GOP *gop = NULL;
-  int tile_num = 0, tile_val = 0;
+  int tile_num = 0, tile_val = 0, rateIndex = 0;
   double bandwidth = 0.0;
+
   gop = args->gop;
   bandwidth = *args->bandwidth;
 	tile_num = args->tile_num;
-	tile_val = gop[gop_num].tile_vals[0][tile_num];
+  if (bandwidth > 0)
+    rateIndex = selectTransferRate(bandwidth, gop->bw_vals);
+  else
+    rateIndex = 0;
+	tile_val = gop[gop_num].tile_vals[rateIndex][tile_num];
 	sprintf(status, "%d", tile_val);
+
+  printf("\n%s\n", status);
+
+  //printf("\n\nbw: %f\n\n", bandwidth);
+  //printf("\n%d vs. %f\n", selectTransferRate(bandwidth, gop->bw_vals), bandwidth);
 }
+
 
 int setRowCol(char *row, char *column, int tile_num) {
 	// row
@@ -246,6 +272,8 @@ int main(int argc, char const *argv[]) {
 
 		gop = setGOPStruct();
     bandwidth = (double*)malloc(1*sizeof(int));
+    /* create thread to calculate bandwidth */
+    pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
 		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
@@ -254,8 +282,6 @@ int main(int argc, char const *argv[]) {
 			/* create thread to send videos */
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
-    /* create thread to calculate bandwidth */
-    pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
 		/* wait for threads to end */
 		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
