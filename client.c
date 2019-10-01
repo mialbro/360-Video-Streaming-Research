@@ -23,15 +23,15 @@ struct GOP {
 };
 
 struct thread_args {
-	int tile_num;
-	double *bandwidth;
-	struct GOP *gop;
+  int tile_num;
+  double *bandwidth;
+  struct GOP *gop;
 };
 
 int selectTransferRate(double bandwidth, int bw_vals[]) {
   int i = 0, rateIndex = 0;
   double smallest_diff = 0.0;
-  // set the transfer rate as the first bw value
+  // make the first bw option be the value
   smallest_diff = abs(bandwidth - bw_vals[0]);
   // loop through the available bandwidths and select the one closes to our calculated value
   for (i = 0; i < BW_COUNT; i++) {
@@ -52,18 +52,18 @@ void *calculateBandwidth(void *arg) {
   struct sockaddr_in servaddr, cliaddr;
   int client_sock = 0, len = 0, bytes = 0, i = 0;
 
-  // set timeout
+  // set timeout to 1.07 seconds
   timeout.tv_sec = 1;
   timeout.tv_usec = 70000;
 
   bandwidth = arg;
 
-	/* create client socket */
-	client_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	/* configure send socket -> we provide the address of other device */
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(100 + PORT);
-	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
+  /* create client socket */
+  client_sock = socket(AF_INET, SOCK_DGRAM, 0);
+ /* configure send socket -> provide the address of other device */
+ servaddr.sin_family = AF_INET;
+ servaddr.sin_port = htons(100 + PORT);
+ servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 
   if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
     printf("ERROR!\n");
@@ -83,19 +83,20 @@ void *calculateBandwidth(void *arg) {
     if (bytes == BUFFER_SIZE) {
       // get the end time
       gettimeofday(&t1, 0);
-      // calculate the total time it took to send the data
+      // calculate the total time it took to send the data and get a response
       elapsed = ((t1.tv_sec-t0.tv_sec)*1000000.0 + t1.tv_usec-t0.tv_usec) / 1000000.0;
       elapsed = elapsed / 2.0;
-      // calculate the data amount (Megabits)
+      // calculate the amount of data we sent (in Megabits)
       data = (BUFFER_SIZE + 28.0) / 125000.0;
-      *bandwidth = data / elapsed;	// Bytes / Second
+      // calculate the bandwidth (Megabits per second)
+      *bandwidth = data / elapsed;
       // display the calculated bandwidth
       //printf("\nelapsed time: %f, bandwidth: %f\n", elapsed, *bandwidth);
     }
   }
 }
 
-/* read in gop  file */
+/* read in gop instruction file and return a struct representation */
 struct GOP* setGOPStruct() {
   int i = 0, j = 0, k = 0;
   FILE *fp = NULL;
@@ -131,19 +132,18 @@ int getStatus(char *status, int gop_num, struct thread_args *args) {
   double bandwidth = 0.0;
 
   gop = args->gop;
+  // store the calculated bandwidth value (currently being calculated in other thread)
   bandwidth = *args->bandwidth;
-	tile_num = args->tile_num;
+  tile_num = args->tile_num;
+  // set correct bandwidth if value has been calculated, set it to the lowest possible value otherwise
   if (bandwidth > 0)
     rateIndex = selectTransferRate(bandwidth, gop->bw_vals);
   else
     rateIndex = 0;
-	tile_val = gop[gop_num].tile_vals[rateIndex][tile_num];
-	sprintf(status, "%d", tile_val);
-
+  // get the tile value given the calculated bandwidth
+  tile_val = gop[gop_num].tile_vals[rateIndex][tile_num];
+  sprintf(status, "%d", tile_val);
   printf("\n%s\n", status);
-
-  //printf("\n\nbw: %f\n\n", bandwidth);
-  //printf("\n%d vs. %f\n", selectTransferRate(bandwidth, gop->bw_vals), bandwidth);
 }
 
 
@@ -157,7 +157,7 @@ int setRowCol(char *row, char *column, int tile_num) {
 
 // filename = getFilename(row, column, gop_num, status);
 char *getFilename(char *filename, char *row, char *column, char *gop_num, char *status) {
-	memset(filename, 0, sizeof(filename));
+  	memset(filename, 0, sizeof(filename));
 	strcat(filename, "./video_files/gop");
 	strcat(filename, gop_num);
 	strcat(filename, "/");
