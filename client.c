@@ -30,13 +30,14 @@ struct thread_args {
 
 int selectTransferRate(double bandwidth, int bw_vals[]) {
   int i = 0, rateIndex = 0;
-  double smallest_diff = 0.0;
+  double smallest_diff = 0.0, diff = 0.0;
   // make the first bw option be the value
-  smallest_diff = abs(bandwidth - bw_vals[0]);
+  smallest_diff = bandwidth - bw_vals[0];
   // loop through the available bandwidths and select the one closes to our calculated value
   for (i = 0; i < BW_COUNT; i++) {
-    if (abs(bandwidth - bw_vals[i]) < smallest_diff) {
-      smallest_diff = abs(bandwidth - bw_vals[i]);
+    diff = bandwidth - bw_vals[i];
+    if ( (diff < smallest_diff) && (diff >= 0) ) {
+      smallest_diff = diff;
       rateIndex = i;
     }
   }
