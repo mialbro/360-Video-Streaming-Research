@@ -144,7 +144,6 @@ int getStatus(char *status, int gop_num, struct thread_args *args) {
   // get the tile value given the calculated bandwidth
   tile_val = gop[gop_num].tile_vals[rateIndex][tile_num];
   sprintf(status, "%d", tile_val);
-  printf("\n%s\n", status);
 }
 
 
@@ -287,6 +286,5 @@ int main(int argc, char const *argv[]) {
 		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
-    pthread_join(bandwidth_thread, NULL);
 		return 0;
 }

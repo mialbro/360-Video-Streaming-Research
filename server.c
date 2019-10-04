@@ -133,34 +133,35 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
 		// we just read in a new file
 		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
-			if (fileOpen == 1) {
+			if (fp != NULL) {
 				fclose(fp);
 			}
 			curr_gop += 1;
-			// create new file to begin saving to it
+			// create new file to begin writing to it
 			sprintf(gop_num, "%d", curr_gop-1);
 			setFilename(filename, gop_num, tile_num, row, col);
 			fp = fopen(filename, "wb");
-			fileOpen = 1;
 			fwrite(buffer, 1, bytes, fp);
-		}
-		else if (strcmp(buffer, "100") == 0) {
-			curr_gop += 1;
-			if (fileOpen == 1) {
-				fclose(fp);
-				fileOpen = 0;
-			}
 		}
 		// continue saving to current file
 		else if (bytes > 0) {
 			fwrite(buffer, 1, bytes, fp);
 		}
+		// no more tiles to be sent
 		else if (bytes == -1 && curr_gop > 0) {
-			if (fileOpen == 1) {
+			if (fp != NULL {
 				fclose(fp);
-				fileOpen = 0;
+				fp = NULL;
 			}
 			break;
+		}
+		// tile not sent
+		else if (strcmp(buffer, "100") == 0) {
+			curr_gop += 1;
+			if (fp != NULL) {
+				fclose(fp);
+				fp = NULL;
+			}
 		}
 	}
 	return 0;
@@ -168,9 +169,11 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 
 void *receiveThread(void *arguments) {
 		int server_sock = 0, i = 0;
-		struct sockaddr_in servaddr;
 		char gop_num[5], tile_num[5], row[5], col[5];
-		struct thread_args *args = arguments;
+		struct sockaddr_in servaddr;
+		struct threads_args = NULL;
+
+		thread_args *args = arguments;
 		// Creating socket file descriptor
 		if ((server_sock = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
 				perror("socket failed");
@@ -210,8 +213,6 @@ int main(int argc, char const *argv[]) {
 		/* wait for threads to end */
 		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
-			pthread_join(thread_array[i], NULL);
 		}
-		pthread_join(ack, NULL);
 		return 0;
 }
