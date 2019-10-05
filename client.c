@@ -157,7 +157,7 @@ int setRowCol(char *row, char *column, int tile_num) {
 
 // filename = getFilename(row, column, gop_num, status);
 char *getFilename(char *filename, char *row, char *column, char *gop_num, char *status) {
-  	memset(filename, 0, sizeof(filename));
+  memset(filename, 0, sizeof(filename));
 	strcat(filename, "./video_files/gop");
 	strcat(filename, gop_num);
 	strcat(filename, "/");
@@ -173,9 +173,9 @@ char *getFilename(char *filename, char *row, char *column, char *gop_num, char *
 /*
 sends the same tile for every frame
 */
-int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
+int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
 	int packet_size = 0, bytes = 0, file_size = 0, len = 0;
-	time_t start_time;
+  double time_left = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE], ack_buffer[1024];
 	FILE *fp = 0;
 
@@ -187,7 +187,8 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	*/
 	if (strcmp(status, "100") == 0) {
     strcpy(buffer,"100");
-		sendto(client_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+		sendto(client_sock, buffer, BUFFER_SIZE, MSG_DONTWAIT, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    sleep(1.07);
 		return 0;
 	}
 	/* open file to send */
@@ -201,7 +202,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	fseek(fp, 0, SEEK_SET);
 
 	/* read in the file and send it to the server */
-	start_time = time(NULL);
+  //printf("sending gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
 	while(fread(buffer, 1, sizeof(buffer), fp) > 0 ) {
 		// calculate the size of the packet to be sent
 		if (file_size - bytes > sizeof(buffer))
@@ -215,17 +216,22 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		// make sure we don't take too long sending packet
 		// if we can't send the file quick enough (in 1.07 seconds)
 		// quit early!
-		if ((double)(time(NULL) - start_time) >= SPF) {
+    time_left = SPF - (time(NULL) - start_time);
+		if (time_left <= 0) {
+      //printf("leaving early from fread: %f\n", time_left);
 			break;
 		}
 	}
+  printf("%d / %d\n", bytes, file_size);
 	fclose(fp);
+  //printf("DONE gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
 }
 
 /* read the file to send and send it to server  */
 void *sendThread(void *arguments) {
 	int file_size = 0, client_sock = 0;
 	time_t start_time = 0;
+  double time_left = 0.0;
 	char row[5], column[5], status[5], gop_num[5];
 	struct sockaddr_in servaddr;
 	struct thread_args *args = arguments;
@@ -251,15 +257,21 @@ void *sendThread(void *arguments) {
 		start_time = time(NULL);
 		// don't send tile if the status is set to 100 -> user not looking in that location
 		sprintf(gop_num, "%d", i);
-		sendGOP(servaddr, client_sock, args->tile_num, row, column, gop_num, status);
+		sendGOP(start_time, servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 		// sleep until next frame needs to be sent
 		// don't send additional tiles untill the current frame ends -> 1.07 seconds
 		//printf("\nsleep: %lf\n", SPF-(double)(time(NULL)-start_time));
-		if (SPF-(double)(time(NULL)-start_time) <= 0)
+    time_left = SPF - (time(NULL) - start_time);
+		if (time_left <= 0) {
+      //printf("leaving early: %f\n", time_left);
 			return 0;
-		else
-			sleep(SPF - (double)(time(NULL) - start_time));
+    }
+		else {
+      //printf("sleeping: %f\n", time_left);
+			sleep(time_left);
+    }
 	}
+
 	return 0;
 }
 
