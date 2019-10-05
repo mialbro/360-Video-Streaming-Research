@@ -219,12 +219,12 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
     time_left = SPF - (time(NULL) - start_time);
 		if (time_left <= 0) {
       //printf("leaving early from fread: %f\n", time_left);
-			break;
+			//break;
 		}
 	}
-  printf("%d / %d\n", bytes, file_size);
+  //printf("gop: %s = %d / %d\n", gop_num, bytes, file_size);
 	fclose(fp);
-  //printf("DONE gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
+  printf("DONE gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
 }
 
 /* read the file to send and send it to server  */
@@ -264,7 +264,7 @@ void *sendThread(void *arguments) {
     time_left = SPF - (time(NULL) - start_time);
 		if (time_left <= 0) {
       //printf("leaving early: %f\n", time_left);
-			return 0;
+			//return 0;
     }
 		else {
       //printf("sleeping: %f\n", time_left);
