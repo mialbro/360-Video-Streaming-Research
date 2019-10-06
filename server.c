@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #define HOST 127.0.0.1
 #define PORT 8080
@@ -22,6 +25,17 @@ struct thread_args {
 	int tile_num;
 };
 
+void createDirectory(char *pathname) {
+	//printf("path: %s\n", pathname);
+	int res = 0;
+	struct stat st = {0};
+	if (stat(pathname, &st) == -1) {
+		if(mkdir(pathname, 0755) < 0) {
+			perror("error creating directory");
+		
+		}
+	}
+}
 void *ackThread() {
 	int server_sock = 0, len = 0, n = 0;
 	char buffer[BUFFER_SIZE];
@@ -91,16 +105,27 @@ void *memmem(const void *haystack, size_t hlen, const void *needle, size_t nlen)
 }
 
 char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char *col) {
+	/*char path[10];
 	memset(filename, 0, sizeof(filename));
 	strcat(filename, "./received/gop");
 	strcat(filename, gop_num);
-	strcat(filename, "_tile");
-	strcat(filename, tile_num);
-	strcat(filename, "_");
+	strcat(filename,"/");
+	createDirectory(filename);
+	strcat(filename, "AngelSplit");
 	strcat(filename, row);
 	strcat(filename, "-");
 	strcat(filename, col);
-	strcat(filename, ".bin");
+	strcat(filename, "/");
+	createDirectory(filename);
+	*/
+	memset(filename, 0, sizeof(filename));
+	strcat(filename, "./received/");
+	strcat(filename, gop_num);
+	strcat(filename, "_");
+	strcat(filename, "AngelSplit");
+	strcat(filename, row);
+	strcat(filename, "-");
+	strcat(filename, col);
 }
 
 
@@ -114,7 +139,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 	};
 
 	char gop_num[5];
-	int len = 0, bytes = 0, curr_gop = 0, total = 0, fileOpen = 0;
+	int len = 0, bytes = 0, curr_gop = 0, total = 0, totalBytes = 0;
 	char filename[1024], buffer[BUFFER_SIZE];
 	FILE *fp = NULL;
 
@@ -124,32 +149,39 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 70000;
-	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	//setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
 	// read in the given file for every frame
 	while (curr_gop <= GOP_COUNT) {
+		bytes = 0;
 		memset(buffer, 0, sizeof(buffer));
 		// read in data
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
+		if (bytes > 0)
+			totalBytes += bytes;
 		// we just read in a new file
 		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
 			if (fp != NULL) {
+				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
+				fp = NULL;
 			}
 			curr_gop += 1;
 			// create new file to begin writing to it
 			sprintf(gop_num, "%d", curr_gop-1);
 			setFilename(filename, gop_num, tile_num, row, col);
+			strcat(filename, "str.bin");
 			fp = fopen(filename, "wb");
 			fwrite(buffer, 1, bytes, fp);
 		}
 		// continue saving to current file
-		else if (bytes > 0) {
+		else if (bytes > 0 && fp != NULL) {
 			fwrite(buffer, 1, bytes, fp);
 		}
 		// no more tiles to be sent
 		else if (bytes == -1 && curr_gop > 0) {
-			if (fp != NULL {
+			if (fp != NULL) {
+				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
 				fp = NULL;
 			}
@@ -159,6 +191,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		else if (strcmp(buffer, "100") == 0) {
 			curr_gop += 1;
 			if (fp != NULL) {
+				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
 				fp = NULL;
 			}
@@ -171,9 +204,7 @@ void *receiveThread(void *arguments) {
 		int server_sock = 0, i = 0;
 		char gop_num[5], tile_num[5], row[5], col[5];
 		struct sockaddr_in servaddr;
-		struct threads_args = NULL;
-
-		thread_args *args = arguments;
+		struct thread_args *args = arguments;
 		// Creating socket file descriptor
 		if ((server_sock = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
 				perror("socket failed");
