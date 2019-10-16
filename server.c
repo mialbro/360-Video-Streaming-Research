@@ -32,7 +32,7 @@ void createDirectory(char *pathname) {
 	if (stat(pathname, &st) == -1) {
 		if(mkdir(pathname, 0755) < 0) {
 			perror("error creating directory");
-		
+
 		}
 	}
 }
@@ -128,6 +128,20 @@ char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char
 	strcat(filename, col);
 }
 
+/* set the read timeout */
+void setTimeout(int server_sock, double elapsed_time) {
+	struct timeval timeout;
+
+	if (elapsed_time <= 0.07) {
+		timeout.sec = 1;
+	}
+	else if (elapsed_time > 0.07) {
+		timeout.sec = 0;
+	}
+	timeout.usec = (1.07 - elapsed_time) / 1000000;
+
+	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+}
 
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 	// used to recognize if we got the start of a new frame
@@ -140,27 +154,28 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 
 	char gop_num[5];
 	int len = 0, bytes = 0, curr_gop = 0, total = 0, totalBytes = 0;
+	double start_time = 0.0, packet_start = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE];
 	FILE *fp = NULL;
 
 	struct sockaddr_in cliaddr;
-	struct timeval timeout;
-
-
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 70000;
-	//setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
 	// read in the given file for every frame
 	while (curr_gop <= GOP_COUNT) {
 		bytes = 0;
 		memset(buffer, 0, sizeof(buffer));
-		// read in data
+		setTimeout(server_sock, elapsed_time);
+		// how long did it take to receive the current packet?
+		packet_start = time.time();
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
 		if (bytes > 0)
 			totalBytes += bytes;
-		// we just read in a new file
+		// we just read in a new file or we received an empty file
 		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
+			elapsed_time = 0;
+			// total elapsed time for the curret frame (gop)
+			elapsed_time = time.time() - packet_start;
+			// close and save current file
 			if (fp != NULL) {
 				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
@@ -174,11 +189,14 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			fp = fopen(filename, "wb");
 			fwrite(buffer, 1, bytes, fp);
 		}
-		// continue saving to current file
+		// we received data so we can continue saving to current file
 		else if (bytes > 0 && fp != NULL) {
 			fwrite(buffer, 1, bytes, fp);
+			// increase the total frame (gop) elapsed time
+			elapsed_time += time.time() - packet_start;
 		}
 		// no more tiles to be sent
+		// if we previously read in a file exit otherwise wait
 		else if (bytes == -1 && curr_gop > 0) {
 			if (fp != NULL) {
 				printf("%s: %d\n", filename, totalBytes);
@@ -187,13 +205,13 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			}
 			break;
 		}
-		// tile not sent
-		else if (strcmp(buffer, "100") == 0) {
-			curr_gop += 1;
+		// if we timeout, then restart elapsed time and close file
+		else if (time.time() - elapsed_time <= 0 && curr_group > 0) {
+			elapsed_time = 0;
+			fp = NULL;
+			curr_group += 1;
 			if (fp != NULL) {
-				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
-				fp = NULL;
 			}
 		}
 	}
