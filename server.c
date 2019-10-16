@@ -133,12 +133,12 @@ void setTimeout(int server_sock, double elapsed_time) {
 	struct timeval timeout;
 
 	if (elapsed_time <= 0.07) {
-		timeout.sec = 1;
+		timeout.tv_sec = 1;
 	}
 	else if (elapsed_time > 0.07) {
-		timeout.sec = 0;
+		timeout.tv_sec = 0;
 	}
-	timeout.usec = (1.07 - elapsed_time) / 1000000;
+	timeout.tv_usec = (1.07 - elapsed_time) / 1000000;
 
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }

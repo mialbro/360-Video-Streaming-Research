@@ -179,6 +179,12 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	char filename[1024], buffer[BUFFER_SIZE], ack_buffer[1024];
 	FILE *fp = 0;
 
+  struct timeval timeout;
+  
+  timeout.tv_sec = 1;
+  timeout.tv_sec = 70000;
+  setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+
 	struct sockaddr_in cliaddr;
 	getFilename(filename, row, column, gop_num, status);
 	memset(buffer, 0, sizeof(buffer));
