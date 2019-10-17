@@ -180,13 +180,14 @@ char *getFilename(char *filename, char *row, char *column, char *gop_num, char *
 /* set the send timeout */
 void setTimeout(int client_sock, double elapsed_time) {
 	struct timeval timeout;
-	if (elapsed_time <= SPF) {
+	if (elapsed_time <= SPF - 1) {
 		timeout.tv_sec = 1;
+    timeout.tv_usec = (int)(((SPF - 1) - elapsed_time) * 1000000);
 	}
-	else if (elapsed_time > SPF) {
+	else if (elapsed_time > SPF - 1) {
 		timeout.tv_sec = 0;
+    timeout.tv_usec  = (int)((SPF - elapsed_time) * 1000000);
 	}
-	timeout.tv_usec = (SPF - elapsed_time) / 1000000;
 	setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 

@@ -125,13 +125,14 @@ char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char
 /* set the read timeout */
 void setTimeout(int server_sock, double elapsed_time) {
 	struct timeval timeout;
-	if (elapsed_time <= 0.07) {
+	if (elapsed_time <= SPF - 1) {
 		timeout.tv_sec = 1;
+    timeout.tv_usec = (int)(((SPF - 1) - elapsed_time) * 1000000);
 	}
-	else if (elapsed_time > 0.07) {
+	else if (elapsed_time > SPF - 1) {
 		timeout.tv_sec = 0;
+    timeout.tv_usec  = (int)((SPF - elapsed_time) * 1000000);
 	}
-	timeout.tv_usec = (1.07 - elapsed_time) / 1000000;
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
