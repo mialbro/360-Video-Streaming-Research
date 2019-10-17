@@ -246,7 +246,6 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 		// quit early!
     time_left = SPF - (time(NULL) - start_time);
 		if (time_left <= 0) {
-      //printf("leaving early from fread: %f\n", time_left);
 			break;
 		}
     elapsed_time = time(NULL) - start_time;

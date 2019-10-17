@@ -197,6 +197,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		}
 		// if we timeout, then restart elapsed time and start sending next frame
 		else if (elapsed_time >= SPF && curr_gop > 0) {
+			printf("\ntimeout\n");
 			elapsed_time = 0;
 			fp = NULL;
 			curr_gop += 1;
