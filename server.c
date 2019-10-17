@@ -21,6 +21,13 @@
 #define GOP_COUNT 10
 #define BUFFER_SIZE 64000
 
+char header[] = {
+	0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
+	0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5a, 0x95, 0x98, 0x09, 0x00, 0x00, 0x00, 0x01,
+	0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+	0x00, 0x5a, 0xa0, 0x07, 0x82, 0x01, 0xe1, 0x65, 0x95, 0x9a, 0x49, 0x32, 0xb8, 0x04, 0x00, 0x00
+};
+
 struct thread_args {
 	int tile_num;
 };
@@ -105,19 +112,6 @@ void *memmem(const void *haystack, size_t hlen, const void *needle, size_t nlen)
 }
 
 char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char *col) {
-	/*char path[10];
-	memset(filename, 0, sizeof(filename));
-	strcat(filename, "./received/gop");
-	strcat(filename, gop_num);
-	strcat(filename,"/");
-	createDirectory(filename);
-	strcat(filename, "AngelSplit");
-	strcat(filename, row);
-	strcat(filename, "-");
-	strcat(filename, col);
-	strcat(filename, "/");
-	createDirectory(filename);
-	*/
 	memset(filename, 0, sizeof(filename));
 	strcat(filename, "./received/");
 	strcat(filename, gop_num);
@@ -131,7 +125,6 @@ char *setFilename(char *filename, char *gop_num, char *tile_num, char *row, char
 /* set the read timeout */
 void setTimeout(int server_sock, double elapsed_time) {
 	struct timeval timeout;
-
 	if (elapsed_time <= 0.07) {
 		timeout.tv_sec = 1;
 	}
@@ -139,42 +132,34 @@ void setTimeout(int server_sock, double elapsed_time) {
 		timeout.tv_sec = 0;
 	}
 	timeout.tv_usec = (1.07 - elapsed_time) / 1000000;
-
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 	// used to recognize if we got the start of a new frame
-	char header[] = {
-		0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
-		0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5a, 0x95, 0x98, 0x09, 0x00, 0x00, 0x00, 0x01,
-		0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
-		0x00, 0x5a, 0xa0, 0x07, 0x82, 0x01, 0xe1, 0x65, 0x95, 0x9a, 0x49, 0x32, 0xb8, 0x04, 0x00, 0x00
-	};
 
 	char gop_num[5];
 	int len = 0, bytes = 0, curr_gop = 0, total = 0, totalBytes = 0;
-	double start_time = 0.0, packet_start = 0.0;
+	double start_time = 0.0, packet_start = 0.0, elapsed_time = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE];
 	FILE *fp = NULL;
 
 	struct sockaddr_in cliaddr;
 
 	// read in the given file for every frame
-	while (curr_gop <= GOP_COUNT) {
+	while (curr_gop <= GOP_COUNT ) {
 		bytes = 0;
 		memset(buffer, 0, sizeof(buffer));
-		setTimeout(server_sock, elapsed_time);
-		// how long did it take to receive the current packet?
-		packet_start = time.time();
+		// how long will it take to receive the current packet?
+		packet_start = time(NULL);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
 		if (bytes > 0)
 			totalBytes += bytes;
 		// we just read in a new file or we received an empty file
 		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
 			elapsed_time = 0;
-			// total elapsed time for the curret frame (gop)
-			elapsed_time = time.time() - packet_start;
+			// total elapsed time for the new file (gop)
+			elapsed_time = time(NULL) - packet_start;
 			// close and save current file
 			if (fp != NULL) {
 				printf("%s: %d\n", filename, totalBytes);
@@ -182,22 +167,26 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				fp = NULL;
 			}
 			curr_gop += 1;
-			// create new file to begin writing to it
-			sprintf(gop_num, "%d", curr_gop-1);
-			setFilename(filename, gop_num, tile_num, row, col);
-			strcat(filename, "str.bin");
-			fp = fopen(filename, "wb");
-			fwrite(buffer, 1, bytes, fp);
+			// dont save file if only the header was sent
+			if (bytes > sizeof(header)) {
+				// create new file to begin writing to it
+				sprintf(gop_num, "%d", curr_gop-1);
+				setFilename(filename, gop_num, tile_num, row, col);
+				strcat(filename, "str.bin");
+				fp = fopen(filename, "wb");
+				fwrite(buffer, 1, bytes, fp);
+			}
 		}
 		// we received data so we can continue saving to current file
 		else if (bytes > 0 && fp != NULL) {
 			fwrite(buffer, 1, bytes, fp);
 			// increase the total frame (gop) elapsed time
-			elapsed_time += time.time() - packet_start;
+			elapsed_time = elapsed_time + (time(NULL) - packet_start);
 		}
 		// no more tiles to be sent
 		// if we previously read in a file exit otherwise wait
 		else if (bytes == -1 && curr_gop > 0) {
+			elapsed_time = elapsed_time + (time(NULL) - packet_start);
 			if (fp != NULL) {
 				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
@@ -205,15 +194,16 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			}
 			break;
 		}
-		// if we timeout, then restart elapsed time and close file
-		else if (time.time() - elapsed_time <= 0 && curr_group > 0) {
+		// if we timeout, then restart elapsed time and start sending next frame
+		else if (elapsed_time >= SPF && curr_gop > 0) {
 			elapsed_time = 0;
 			fp = NULL;
-			curr_group += 1;
+			curr_gop += 1;
 			if (fp != NULL) {
 				fclose(fp);
 			}
 		}
+		setTimeout(server_sock, elapsed_time);
 	}
 	return 0;
 }

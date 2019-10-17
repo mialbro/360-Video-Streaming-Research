@@ -17,6 +17,13 @@
 #define BW_COUNT 4
 #define BUFFER_SIZE 64000
 
+char header[] = {
+  0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
+  0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5a, 0x95, 0x98, 0x09, 0x00, 0x00, 0x00, 0x01,
+  0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+  0x00, 0x5a, 0xa0, 0x07, 0x82, 0x01, 0xe1, 0x65, 0x95, 0x9a, 0x49, 0x32, 0xb8, 0x04, 0x00, 0x00
+};
+
 struct GOP {
   int *bw_vals;
   int **tile_vals;
@@ -170,31 +177,46 @@ char *getFilename(char *filename, char *row, char *column, char *gop_num, char *
 	strcat(filename, "/str.bin");
 }
 
+/* set the send timeout */
+void setTimeout(int client_sock, double elapsed_time) {
+	struct timeval timeout;
+	if (elapsed_time <= SPF) {
+		timeout.tv_sec = 1;
+	}
+	else if (elapsed_time > SPF) {
+		timeout.tv_sec = 0;
+	}
+	timeout.tv_usec = (SPF - elapsed_time) / 1000000;
+	setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+}
+
 /*
 sends the same tile for every frame
 */
 int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
 	int packet_size = 0, bytes = 0, file_size = 0, len = 0;
-  double time_left = 0.0;
+  double time_left = 0.0, elapsed_time = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE], ack_buffer[1024];
 	FILE *fp = 0;
 
   struct timeval timeout;
-  
+
   timeout.tv_sec = 1;
-  timeout.tv_sec = 70000;
-  setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+  timeout.tv_usec = 70000;
+  // change to send timeout
+  setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
 
 	struct sockaddr_in cliaddr;
 	getFilename(filename, row, column, gop_num, status);
 	memset(buffer, 0, sizeof(buffer));
 	/* user is not looking at this tile so
-		 do not send it. just send empty packet
+		 do not send it. just send header
 	*/
 	if (strcmp(status, "100") == 0) {
-    strcpy(buffer,"100");
-		sendto(client_sock, buffer, BUFFER_SIZE, MSG_DONTWAIT, (struct sockaddr*)&servaddr, sizeof(servaddr));
-    sleep(1.07);
+		sendto(client_sock, header, sizeof(header), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    time_left = SPF - (time(NULL) - start_time);
+    if (time_left > 0)
+      sleep(time_left);
 		return 0;
 	}
 	/* open file to send */
@@ -207,9 +229,8 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	file_size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	/* read in the file and send it to the server */
-  //printf("sending gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
-	while(fread(buffer, 1, sizeof(buffer), fp) > 0 ) {
+	/* read in the file and send it to the server until the file is done or we run out of time */
+	while ((fread(buffer, 1, sizeof(buffer), fp)) > 0 && (elapsed_time < SPF)) {
 		// calculate the size of the packet to be sent
 		if (file_size - bytes > sizeof(buffer))
 			packet_size = sizeof(buffer);
@@ -225,12 +246,17 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
     time_left = SPF - (time(NULL) - start_time);
 		if (time_left <= 0) {
       //printf("leaving early from fread: %f\n", time_left);
-			//break;
+			break;
 		}
+    elapsed_time = time(NULL) - start_time;
+    setTimeout(client_sock, elapsed_time);
 	}
-  //printf("gop: %s = %d / %d\n", gop_num, bytes, file_size);
 	fclose(fp);
   printf("DONE gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
+  // sleep if we have time left
+  time_left = SPF - (time(NULL) - start_time);
+  if (time_left > 0)
+    sleep(time_left);
 }
 
 /* read the file to send and send it to server  */
