@@ -179,6 +179,9 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
 				fp = NULL;
+				// sleep if we finish fasts
+				if (elapsed_time < SPF)
+					sleep(SPF - elapsed_time);
 			}
 			curr_gop += 1;
 			// create new file to begin writing to it
