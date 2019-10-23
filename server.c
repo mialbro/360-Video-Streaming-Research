@@ -171,32 +171,21 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			elapsed_time = 0;
 			// total elapsed time for the new file (gop)
 			elapsed_time = time(NULL) - packet_start;
-			// we're receiving actual data, not empty file
-			if (headerFlag == 0) {
-				// split prev data and new data from buffer
-				splitBuffer(headerPtr, buffer, newFileBuffer);
-				// previous file was open
-				if (fp != NULL) {
-					// write to previous file
-					fwrite(buffer, 1, sizeof(buffer), fp);
-					printf("%s: %d\n", filename, totalBytes);
-					fclose(fp);
-					fp = NULL;
-				}
-				curr_gop += 1;
-				// create new file to begin writing to it
-				sprintf(gop_num, "%d", curr_gop-1);
-				setFilename(filename, gop_num, tile_num, row, col);
-				strcat(filename, "str.bin");
-				fp = fopen(filename, "wb");
-				fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
-				if (bytes == sizeof(header))
-					headerFlag = 1;
-			}
-			else if (headerFlag == 1) {
-				headerFlag = 0;
+			splitBuffer(headerPtr, buffer, newFileBuffer);
+			// write ending to previous file and exit
+			if (fp != NULL) {
+				fwrite(buffer, 1, sizeof(buffer), fp);
+				printf("%s: %d\n", filename, totalBytes);
+				fclose(fp);
 				fp = NULL;
 			}
+			curr_gop += 1;
+			// create new file to begin writing to it
+			sprintf(gop_num, "%d", curr_gop-1);
+			setFilename(filename, gop_num, tile_num, row, col);
+			strcat(filename, "str.bin");
+			fp = fopen(filename, "wb");
+			fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
 		}
 		// add to previous file
 		else if (bytes > 0 && fp != NULL) {
@@ -214,7 +203,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				fclose(fp);
 				fp = NULL;
 			}
-			headerFlag = 0;
 			break;
 		}
 		// if we timeout, then restart elapsed time and start sending next frame
@@ -227,7 +215,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				fclose(fp);
 			}
 			setTimeout(server_sock, elapsed_time);
-			headerFlag = 0;
 		}
 	}
 	return 0;
