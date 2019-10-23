@@ -142,15 +142,35 @@ void splitBuffer(char *headerPtr, char *buffer, char *newFileBuffer) {
 	*headerPtr = '\0';
 }
 
+void writeNewFile(FILE *fp, char *newFileBuffer, char *filename, char *gop_num, char *tile_num, char *row, char *col, int curr_gop) {
+	// create new file to begin writing to it
+	sprintf(gop_num, "%d", curr_gop-1);
+	setFilename(filename, gop_num, tile_num, row, col);
+	strcat(filename, "str.bin");
+	fp = fopen(filename, "wb");
+	fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
+}
+
+void savePrevFile(FILE *fp, char *buffer, double elapsed_time) {
+	if (fp != NULL) {
+		fwrite(buffer, 1, sizeof(buffer), fp);
+		fclose(fp);
+		fp = NULL;
+	}
+}
+
+void closeFile(FILE *fp) {
+	if (fp != NULL)
+		fclose(fp);
+		fp = NULL;
+}
+
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
-	// used to recognize if we got the start of a new frame
-	char gop_num[5];
-	int len = 0, bytes = 0, curr_gop = 0, total = 0, totalBytes = 0, headerFlag = 0;
-	double start_time = 0.0, packet_start = 0.0, elapsed_time = 0.0;
-	char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE];
+	int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0;
+	double packet_start = 0.0, elapsed_time = 0.0;
+	char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE], gop_num[5];
 	char *headerPtr = NULL;
 	FILE *fp = NULL;
-
 	struct sockaddr_in cliaddr;
 	// read in the given file for every frame
 	while (curr_gop <= GOP_COUNT ) {
@@ -159,7 +179,8 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		// how long will it take to receive the current packet?
 		packet_start = time(NULL);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
-
+		// calculate the elapsed time
+		elapsed_time = elapsed_time + (time(NULL) - packet_start);
 		if (bytes > 0) {
 			totalBytes += bytes;
 			buffer[bytes] = '\0';
@@ -168,46 +189,37 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header));
 		// we just read in a new file or we received an empty file
 		if (headerPtr != NULL) {
+			// split the buffers between new file and prev file
 			splitBuffer(headerPtr, buffer, newFileBuffer);
 			// write ending to previous file and exit
-			if (fp != NULL) {
-				fwrite(buffer, 1, sizeof(buffer), fp);
-				printf("%s: %d\n", filename, totalBytes);
-				fclose(fp);
-				fp = NULL;
-				// sleep if we finish fasts
+			savePrevFile(fp, buffer, elapsed_time);
+			// write data to new file
+			writeNewFile(fp, newFileBuffer, filename, gop_num, tile_num, row, col, curr_gop);
+			// if new frame was sent as a part of the previous one, don't start counting new time
+			if (sizeof(buffer) > 0 && sizeof(newFileBuffer) > 0) {
+				// sleep if we finish fast
 				if (elapsed_time < SPF)
 					sleep(SPF - elapsed_time);
-			}
+					elapsed_time = 0.0;
+				}
+				else
+					elapsed_time = packet_start;
 			curr_gop += 1;
-			// create new file to begin writing to it
-			sprintf(gop_num, "%d", curr_gop-1);
-			setFilename(filename, gop_num, tile_num, row, col);
-			strcat(filename, "str.bin");
-			fp = fopen(filename, "wb");
-			fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
 		}
-		// add to previous file
-		else if (bytes > 0 && fp != NULL) {
-			fwrite(buffer, 1, bytes, fp);
-			// increase the total frame (gop) elapsed time
-			elapsed_time = elapsed_time + (time(NULL) - packet_start);
-			headerFlag = 0;
-		}
-		// if we timeout, then restart elapsed time and start sending next frame
-		if (elapsed_time >= SPF && curr_gop > 0) {
-			printf("\ntimeout\n");
-			elapsed_time = 0;
-			fp = NULL;
-			curr_gop += 1;
-			if (fp != NULL) {
-				fclose(fp);
-				fp = NULL;
+			// add to previous file
+			if (bytes > 0 && fp != NULL) {
+				fwrite(buffer, 1, bytes, fp);
 			}
+			// if we timeout, then restart elapsed time and start sending next frame
+			if (elapsed_time >= SPF && curr_gop > 0) {
+				elapsed_time = 0;
+				closeFile(fp);
+				curr_gop += 1;
+			}
+			setTimeout(server_sock, elapsed_time);
 		}
+		return 0;
 	}
-	return 0;
-}
 
 void *receiveThread(void *arguments) {
 		int server_sock = 0, i = 0;
