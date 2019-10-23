@@ -136,17 +136,22 @@ void setTimeout(int server_sock, double elapsed_time) {
 	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
+/* split the new and previous gop data */
+void splitBuffer(char *headerPtr, char *buffer, char *newFileBuffer) {
+	strcpy(newFileBuffer, headerPtr);
+	*headerPtr = '\0';
+}
+
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 	// used to recognize if we got the start of a new frame
-
 	char gop_num[5];
 	int len = 0, bytes = 0, curr_gop = 0, total = 0, totalBytes = 0;
 	double start_time = 0.0, packet_start = 0.0, elapsed_time = 0.0;
-	char filename[1024], buffer[BUFFER_SIZE];
+	char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE];
+	char *headerPtr = NULL;
 	FILE *fp = NULL;
 
 	struct sockaddr_in cliaddr;
-
 	// read in the given file for every frame
 	while (curr_gop <= GOP_COUNT ) {
 		bytes = 0;
@@ -154,15 +159,23 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		// how long will it take to receive the current packet?
 		packet_start = time(NULL);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
-		if (bytes > 0)
+		if (bytes > 0) {
 			totalBytes += bytes;
+			buffer[bytes] = '\0';
+		}
+		// return pointer to the beginning of substring (needle)
+		headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header));
 		// we just read in a new file or we received an empty file
-		if (memmem(buffer, sizeof(buffer), header, sizeof(header)) != NULL) {
+		if (headerPtr != NULL) {
 			elapsed_time = 0;
 			// total elapsed time for the new file (gop)
 			elapsed_time = time(NULL) - packet_start;
-			// close and save current file
+			// close and save previous file
+			splitBuffer(headerPtr, buffer, newFileBuffer);
+			// previous file was open
 			if (fp != NULL) {
+				// write to previous file
+				fwrite(buffer, 1, sizeof(buffer), fp);
 				printf("%s: %d\n", filename, totalBytes);
 				fclose(fp);
 				fp = NULL;
@@ -175,7 +188,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				setFilename(filename, gop_num, tile_num, row, col);
 				strcat(filename, "str.bin");
 				fp = fopen(filename, "wb");
-				fwrite(buffer, 1, bytes, fp);
+				fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
 			}
 		}
 		// we received data so we can continue saving to current file
