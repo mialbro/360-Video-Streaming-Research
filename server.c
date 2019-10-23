@@ -159,6 +159,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		// how long will it take to receive the current packet?
 		packet_start = time(NULL);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
+		setTimeout(server_sock, elapsed_time);
 
 		if (bytes > 0) {
 			totalBytes += bytes;
@@ -215,7 +216,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 				fclose(fp);
 			}
 		}
-		setTimeout(server_sock, elapsed_time);
 	}
 	return 0;
 }
