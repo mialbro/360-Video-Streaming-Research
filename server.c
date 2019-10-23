@@ -203,7 +203,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		else if (bytes == -1 && curr_gop > 0) {
 			elapsed_time = elapsed_time + (time(NULL) - packet_start);
 			if (fp != NULL) {
-				printf("%s: %d\n", filename, totalBytes);
+				printf("%s: %d BREAK\n", filename, totalBytes);
 				fclose(fp);
 				fp = NULL;
 			}
@@ -217,6 +217,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			curr_gop += 1;
 			if (fp != NULL) {
 				fclose(fp);
+				fp = NULL;
 			}
 		}
 	}
