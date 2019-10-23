@@ -214,8 +214,8 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			if (fp != NULL) {
 				fclose(fp);
 			}
-			setTimeout(server_sock, elapsed_time);
 		}
+		setTimeout(server_sock, elapsed_time);
 	}
 	return 0;
 }
