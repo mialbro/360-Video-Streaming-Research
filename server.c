@@ -159,7 +159,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		// how long will it take to receive the current packet?
 		packet_start = time(NULL);
 		bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, &len);
-		setTimeout(server_sock, elapsed_time);
 
 		if (bytes > 0) {
 			totalBytes += bytes;
@@ -169,9 +168,6 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header));
 		// we just read in a new file or we received an empty file
 		if (headerPtr != NULL) {
-			elapsed_time = 0;
-			// total elapsed time for the new file (gop)
-			elapsed_time = time(NULL) - packet_start;
 			splitBuffer(headerPtr, buffer, newFileBuffer);
 			// write ending to previous file and exit
 			if (fp != NULL) {
@@ -198,19 +194,8 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			elapsed_time = elapsed_time + (time(NULL) - packet_start);
 			headerFlag = 0;
 		}
-		// no more tiles to be sent
-		// if we previously read in a file exit otherwise wait
-		else if (bytes == -1 && curr_gop == GOP_COUNT) {
-			elapsed_time = elapsed_time + (time(NULL) - packet_start);
-			if (fp != NULL) {
-				printf("%s: %d BREAK\n", filename, totalBytes);
-				fclose(fp);
-				fp = NULL;
-			}
-			break;
-		}
 		// if we timeout, then restart elapsed time and start sending next frame
-		else if (elapsed_time >= SPF && curr_gop > 0) {
+		if (elapsed_time >= SPF && curr_gop > 0) {
 			printf("\ntimeout\n");
 			elapsed_time = 0;
 			fp = NULL;
