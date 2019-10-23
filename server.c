@@ -200,7 +200,7 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 		}
 		// no more tiles to be sent
 		// if we previously read in a file exit otherwise wait
-		else if (bytes == -1 && curr_gop > 0) {
+		else if (bytes == -1 && curr_gop == GOP_COUNT) {
 			elapsed_time = elapsed_time + (time(NULL) - packet_start);
 			if (fp != NULL) {
 				printf("%s: %d BREAK\n", filename, totalBytes);
