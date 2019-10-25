@@ -193,8 +193,10 @@ int getGOP(int server_sock, char *tile_num, char *row, char *col) {
 			splitBuffer(headerPtr, buffer, newFileBuffer);
 			// write ending to previous file and exit
 			savePrevFile(fp, buffer, elapsed_time);
-			// write data to new file
-			writeNewFile(fp, newFileBuffer, filename, gop_num, tile_num, row, col, curr_gop);
+			if (sizeof(newFileBuffer) > sizeof(header)) {
+				// write data to new file
+				writeNewFile(fp, newFileBuffer, filename, gop_num, tile_num, row, col, curr_gop);
+			}
 			// if new frame was sent as a part of the previous one, don't start counting new time
 			if (sizeof(buffer) > 0 && sizeof(newFileBuffer) > 0) {
 				// sleep if we finish fast
