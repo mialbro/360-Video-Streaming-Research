@@ -12,7 +12,7 @@
 
 
 #define HOST 127.0.0.1
-#define START_PORT 8083
+#define START_PORT 8080
 #define ROWS 8
 #define COLUMNS 8
 #define USPF 1070000
@@ -168,17 +168,22 @@ void closeFile(FILE * fp) {
 
 int getGOP(int server_sock, char * tile_num, char * row, char * col) {
     int x = 0;
-    int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0;
+    int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0, flag = 0;
     double packet_start = 0.0, elapsed_time = 0.0;
     char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE], gop_num[5];
     char * headerPtr = NULL;
     FILE * fp = NULL;
     struct sockaddr_in cliaddr;
     // read in the given file for every frame
-    while (curr_gop <= GOP_COUNT) {
+    while (curr_gop < GOP_COUNT) {
         bytes = 0;
         memset(buffer, 0, sizeof(buffer));
         // how long will it take to receive the current packet?
+				if (flag == 0) {
+					recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len)
+					printf("got first byte\n");
+					flag = 1;
+				}
         packet_start = time(NULL);
         bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr * ) & cliaddr, & len);
         // calculate the elapsed time

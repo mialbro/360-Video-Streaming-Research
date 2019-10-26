@@ -8,7 +8,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define START_PORT 8083
+#define START_PORT 8080
 #define ROWS 8
 #define COLUMNS 8
 #define SPF 1.07
