@@ -96,19 +96,23 @@ void setRowCol(char * row, char * col, int tile_num) {
  * NULL if the substring is not found.
  */
 void * memmem(const void * haystack, size_t hlen,
-    const void * needle, size_t nlen) {
-    int needle_first;
+    const void * needle, size_t nlen, int *hIndex) {
+    int needle_first, index;
     const void * p = haystack;
     size_t plen = hlen;
 
     if (!nlen)
         return NULL;
 
+    index = 0;
     needle_first = * (unsigned char * ) needle;
     while (plen >= nlen && (p = memchr(p, needle_first, plen - nlen + 1))) {
-        if (!memcmp(p, needle, nlen))
+        if (!memcmp(p, needle, nlen)) {
+            *hIndex = index;
             return (void * ) p;
+        }
         p++;
+        index++;
         plen = hlen - (p - haystack);
     }
     return NULL;
@@ -167,45 +171,40 @@ void closeFile(FILE * fp) {
 }
 
 int getGOP(int server_sock, char * tile_num, char * row, char * col) {
-    int x = 0;
-    int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0, flag = 0;
+    int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0, flag = 0, hIndex = 0;
     double packet_start = 0.0, elapsed_time = 0.0;
     char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE], gop_num[5];
     char * headerPtr = NULL;
     FILE * fp = NULL;
     struct sockaddr_in cliaddr;
     // read in the given file for every frame
-    while (curr_gop < GOP_COUNT) {
+    while (curr_gop < 2) {
+        printf("%d\n", curr_gop);
+        if (flag == 0) {
+            recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
+            flag = 1;
+            packet_start = time(NULL);
+        }
         bytes = 0;
         memset(buffer, 0, sizeof(buffer));
-        // how long will it take to receive the current packet?
-				if (flag == 0) {
-					recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
-					flag = 1;
-				}
-        packet_start = time(NULL);
         bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr * ) & cliaddr, & len);
         // calculate the elapsed time
         elapsed_time = elapsed_time + (time(NULL) - packet_start);
         if (bytes > 0) {
-            totalBytes += bytes;
-            buffer[bytes] = '\0';
             // return pointer to the beginning of substring (needle)
-            headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header));
-            // we just read in a new file or we received an empty file
+            headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header), &hIndex);
             if (headerPtr != NULL) {
                 // split the buffers between new file and prev file
                 splitBuffer(headerPtr, buffer, newFileBuffer);
-								printf("prev_file: %d | new_file: %d | bytes: %d\n", sizeof(buffer), sizeof(newFileBuffer), bytes);
                 // write ending to previous file and exit
-								if (sizeof(buffer) > 0)
+                if (strlen(buffer) > 0)
                 	savePrevFile(fp, buffer, elapsed_time);
-                if (sizeof(newFileBuffer) > sizeof(header))
+                if (strlen(newFileBuffer) > strlen(header))
                     // write data to new file
                     writeNewFile(fp, newFileBuffer, filename, gop_num, tile_num, row, col, curr_gop);
                 curr_gop += 1;
                 // if new frame was sent as a part of the previous one, don't start counting new time
-                if (sizeof(buffer) > 0 && sizeof(newFileBuffer) > 0) {
+                if (strlen(buffer) > 0 && strlen(newFileBuffer) > 0) {
                     // sleep if we finish fast
                     if (elapsed_time < SPF)
                         sleep(SPF - elapsed_time);
@@ -215,14 +214,15 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
             }
             // add to previous file
             if (bytes > 0 && fp != NULL) {
+                printf("adding %d bytes\n", bytes);
                 fwrite(buffer, 1, bytes, fp);
             }
         }
         // if we timeout, then restart elapsed time and start sending next frame
         if (elapsed_time >= SPF && curr_gop > 0) {
+            printf("leaving %d\n", curr_gop);
             elapsed_time = 0;
             closeFile(fp);
-            curr_gop += 1;
         }
         setTimeout(server_sock, elapsed_time);
     }
@@ -265,14 +265,14 @@ int main(int argc, char
     struct thread_args args[TILE_COUNT]; // array for argument structs
 
     /* create udp threads for listening at each port for the corresponding tile */
-    for (i = 0; i < TILE_COUNT; i++) {
+    for (i = 0; i < 1; i++) {
         args[i].tile_num = i;
         /* create thread to send videos */
         pthread_create( & thread_array[i], NULL, & receiveThread, (void * ) & args[i]);
     }
     pthread_create( & ack, NULL, ackThread, NULL);
     /* wait for threads to end */
-    for (i = 0; i < TILE_COUNT; i++) {
+    for (i = 0; i < 1; i++) {
         pthread_join(thread_array[i], NULL);
     }
     return 0;
