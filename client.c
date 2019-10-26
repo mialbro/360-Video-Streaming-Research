@@ -228,16 +228,20 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	fseek(fp, 0, SEEK_END);
 	file_size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
+  printf("size of file to send: %d\n", file_size);
 
 	/* read in the file and send it to the server until the file is done or we run out of time */
 	while ((fread(buffer, 1, sizeof(buffer), fp)) > 0 && (elapsed_time < SPF)) {
+    printf("sent: %d bytes from %s\n", strlen(buffer),filename);
 		// calculate the size of the packet to be sent
 		if (file_size - bytes > sizeof(buffer))
 			packet_size = sizeof(buffer);
 		else
 			packet_size = file_size - bytes;
+    //buffer[packet_size] = '\0';
 		// send the packet and store the number of bytes that have been sent
 		bytes += sendto(client_sock, buffer, packet_size, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
 		// make sure we don't take too long sending packet
@@ -281,7 +285,7 @@ void *sendThread(void *arguments) {
 		each time we will receive a tile from this row / column.
 		this represents the same tile from every frame of the video.
 	*/
-	for (int i = 0; i < GOP_COUNT; i++) {
+	for (int i = 0; i < 2; i++) {
 		// read file to get the status (quality) of the tile to be selected
 		getStatus(status, i, arguments);
 		start_time = time(NULL);
@@ -310,7 +314,7 @@ int main(int argc, char const *argv[]) {
     bandwidth = (double*)malloc(1*sizeof(int));
     /* create thread to calculate bandwidth */
     pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
-		for (i = 0; i < TILE_COUNT; i++) {
+		for (i = 0; i < 1; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
       // store adress of bandwidth value
@@ -319,7 +323,7 @@ int main(int argc, char const *argv[]) {
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
 		/* wait for threads to end */
-		for ( i = 0; i < TILE_COUNT; i++) {
+		for ( i = 0; i < 1; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
 		return 0;
