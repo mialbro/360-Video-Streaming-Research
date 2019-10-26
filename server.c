@@ -12,7 +12,7 @@
 
 
 #define HOST 127.0.0.1
-#define PORT 8080
+#define START_PORT 8083
 #define ROWS 8
 #define COLUMNS 8
 #define USPF 1070000
@@ -33,7 +33,6 @@ struct thread_args {
 };
 
 void createDirectory(char *pathname) {
-	//printf("path: %s\n", pathname);
 	int res = 0;
 	struct stat st = {0};
 	if (stat(pathname, &st) == -1) {
@@ -58,7 +57,7 @@ void *ackThread() {
 	server_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	// configure server socket
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(PORT + 100);
+	servaddr.sin_port = htons(START_PORT + 100);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 
 	// bind the socket to the specified port
@@ -235,7 +234,7 @@ void *receiveThread(void *arguments) {
 		}
 		// configure server socket
 		servaddr.sin_family = AF_INET;
-		servaddr.sin_port = htons(PORT + args->tile_num);
+		servaddr.sin_port = htons(START_PORT + args->tile_num);
 		servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 		// bind the socket to the specified port
 		if (bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {

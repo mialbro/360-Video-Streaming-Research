@@ -8,7 +8,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define PORT 8080
+#define START_PORT 8083
 #define ROWS 8
 #define COLUMNS 8
 #define SPF 1.07
@@ -70,7 +70,7 @@ void *calculateBandwidth(void *arg) {
   client_sock = socket(AF_INET, SOCK_DGRAM, 0);
  /* configure send socket -> provide the address of other device */
  servaddr.sin_family = AF_INET;
- servaddr.sin_port = htons(100 + PORT);
+ servaddr.sin_port = htons(100 + START_PORT);
  servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 
   if (connect(client_sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
@@ -99,7 +99,6 @@ void *calculateBandwidth(void *arg) {
       // calculate the bandwidth (Megabits per second)
       *bandwidth = data / elapsed;
       // display the calculated bandwidth
-      //printf("\nelapsed time: %f, bandwidth: %f\n", elapsed, *bandwidth);
     }
   }
 }
@@ -252,7 +251,6 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
     setTimeout(client_sock, elapsed_time);
 	}
 	fclose(fp);
-  printf("DONE gop: %s, status: %s, size: %d, position: %s-%s\n", gop_num, status, file_size, row, column);
   // sleep if we have time left
   time_left = SPF - (time(NULL) - start_time);
   if (time_left > 0)
@@ -274,7 +272,7 @@ void *sendThread(void *arguments) {
 	}
 	/* configure socket */
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(PORT + args->tile_num);
+	servaddr.sin_port = htons(START_PORT + args->tile_num);
 	servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
 	// get the corresponding tile's row and column
 	setRowCol(row, column, args->tile_num);
@@ -292,14 +290,8 @@ void *sendThread(void *arguments) {
 		sendGOP(start_time, servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 		// sleep until next frame needs to be sent
 		// don't send additional tiles untill the current frame ends -> 1.07 seconds
-		//printf("\nsleep: %lf\n", SPF-(double)(time(NULL)-start_time));
     time_left = SPF - (time(NULL) - start_time);
-		if (time_left <= 0) {
-      //printf("leaving early: %f\n", time_left);
-			//return 0;
-    }
-		else {
-      //printf("sleeping: %f\n", time_left);
+		if (time_left >= 0) {
 			sleep(time_left);
     }
 	}
