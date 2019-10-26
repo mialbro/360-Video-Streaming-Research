@@ -181,7 +181,6 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
         // how long will it take to receive the current packet?
 				if (flag == 0) {
 					recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
-					printf("got first byte\n");
 					flag = 1;
 				}
         packet_start = time(NULL);
