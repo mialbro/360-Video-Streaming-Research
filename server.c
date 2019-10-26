@@ -236,7 +236,7 @@ void * receiveThread(void * arguments) {
     }
     // configure server socket
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(START_PORT + args - > tile_num);
+    servaddr.sin_port = htons(START_PORT + args->tile_num);
     servaddr.sin_addr.s_addr = inet_addr("192.168.0.2");
     // bind the socket to the specified port
     if (bind(server_sock, (struct sockaddr * ) & servaddr, sizeof(servaddr)) < 0) {
@@ -247,8 +247,8 @@ void * receiveThread(void * arguments) {
     	 in 1.07 second intervals
     */
     // set the row / column values
-    setRowCol(row, col, args - > tile_num);
-    sprintf(tile_num, "%d", args - > tile_num);
+    setRowCol(row, col, args->tile_num);
+    sprintf(tile_num, "%d", args->tile_num);
     // listen for messages at specified port
     getGOP(server_sock, tile_num, row, col);
 }
