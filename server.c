@@ -180,7 +180,7 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
         memset(buffer, 0, sizeof(buffer));
         // how long will it take to receive the current packet?
 				if (flag == 0) {
-					recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len)
+					recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
 					printf("got first byte\n");
 					flag = 1;
 				}
