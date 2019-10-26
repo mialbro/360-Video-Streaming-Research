@@ -62,12 +62,13 @@ void *ackThread() {
 
 	// bind the socket to the specified port
 	bind(server_sock, (struct sockaddr *)&servaddr, sizeof(servaddr));
-	setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	//setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
 	// listen for packet from client then send response to client to calculate bandwidth
 	while (1) {
 		n = recvfrom(server_sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
 		if (n == BUFFER_SIZE) {
+			return 0;
 			buffer[n] = '\0';
 			sendto(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&cliaddr, sizeof(servaddr));
 			memset(buffer, 0, sizeof(buffer));
@@ -165,6 +166,7 @@ void closeFile(FILE *fp) {
 }
 
 int getGOP(int server_sock, char *tile_num, char *row, char *col) {
+	int x = 0;
 	int bytes = 0, curr_gop = 0, totalBytes = 0, len = 0;
 	double packet_start = 0.0, elapsed_time = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE], newFileBuffer[BUFFER_SIZE], gop_num[5];
