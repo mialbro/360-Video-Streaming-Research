@@ -197,6 +197,7 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
             if (headerPtr != NULL) {
                 // split the buffers between new file and prev file
                 splitBuffer(headerPtr, buffer, newFileBuffer);
+								printf("prev_file: %d | new_file: %d\n", sizeof(buffer), sizeof(newFileBuffer));
                 // write ending to previous file and exit
 								if (sizeof(buffer) > 0)
                 	savePrevFile(fp, buffer, elapsed_time);
