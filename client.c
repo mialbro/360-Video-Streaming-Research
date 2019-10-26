@@ -81,6 +81,7 @@ void *calculateBandwidth(void *arg) {
 
   // send packet to server then listen for response to calculate bandwidth
   while (1) {
+    printf("sending from port %d\n", ntohs(servaddr.sin_port));
     // get the start time
     gettimeofday(&t0, 0);
     // send syn to the server
