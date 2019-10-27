@@ -268,7 +268,6 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	fclose(fp);
   // sleep if we have time left
   time_left = SPF - (time(NULL) - start_time);
-  printf("\n");
   if (time_left > 0)
     sleep(time_left);
 }
