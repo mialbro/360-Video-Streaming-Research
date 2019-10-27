@@ -187,7 +187,7 @@ void setTimeout(int client_sock, double elapsed_time) {
 		timeout.tv_sec = 0;
     timeout.tv_usec  = (int)((SPF - elapsed_time) * 1000000);
 	}
-	setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+	setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
 int getFileSize(FILE *fp) {
@@ -208,13 +208,14 @@ void sendHeader(int client_sock, int start_time, struct sockaddr_in servaddr) {
 /*
 sends the same tile for every frame
 */
-int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
+int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *row, char *column, char *gop_num, char *status) {
 	int packet_size = 0, bytes = 0, file_size = 0, len = 0;
-  double time_left = 0.0, elapsed_time = 0.0;
+  double time_left = 0.0, start_time = 0.0, elapsed_time = 0.0;
 	char filename[1024], buffer[BUFFER_SIZE], ack_buffer[1024];
 	FILE *fp = 0;
 
   struct timeval timeout;
+  start_time = time(NULL);
 
   timeout.tv_sec = 1;
   timeout.tv_usec = 70000;
@@ -298,10 +299,9 @@ void *sendThread(void *arguments) {
 	for (int i = 0; i < GOP_COUNT; i++) {
 		// read file to get the status (quality) of the tile to be selected
 		getStatus(status, i, arguments);
-		start_time = time(NULL);
 		// don't send tile if the status is set to 100 -> user not looking in that location
 		sprintf(gop_num, "%d", i);
-		sendGOP(start_time, servaddr, client_sock, args->tile_num, row, column, gop_num, status);
+		sendGOP(servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 	}
 	return 0;
 }
@@ -317,7 +317,7 @@ int main(int argc, char const *argv[]) {
     bandwidth = (double*)malloc(1*sizeof(int));
     /* create thread to calculate bandwidth */
     pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
-		for (i = 0; i < TILE_COUNT; i++) {
+		for (i = 0; i < 1; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
       // store adress of bandwidth value
@@ -326,7 +326,7 @@ int main(int argc, char const *argv[]) {
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
 		/* wait for threads to end */
-		for ( i = 0; i < TILE_COUNT; i++) {
+		for ( i = 0; i < 1; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
 		return 0;
