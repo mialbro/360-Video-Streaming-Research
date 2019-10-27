@@ -190,6 +190,14 @@ void setTimeout(int client_sock, double elapsed_time) {
 	setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
+int getFileSize(FILE *fp) {
+  int file_size = 0;
+  fseek(fp, 0, SEEK_END);
+	file_size = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+  return file_size;
+}
+
 /*
 sends the same tile for every frame
 */
@@ -222,24 +230,19 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	/* open file to send */
 	fp = fopen(filename, "rb");
 	if (fp == NULL) {
-		printf("could not find: %s\n", filename);
-		return 0;
+    printf("could not find %s\n", filename);
+		exit(0);
 	}
 	// get the file size
-	fseek(fp, 0, SEEK_END);
-	file_size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-  printf("size of file to send: %d\n", file_size);
+  file_size = getFileSize(fp);
 
 	/* read in the file and send it to the server until the file is done or we run out of time */
 	while ((fread(buffer, 1, sizeof(buffer), fp)) > 0 && (elapsed_time < SPF)) {
-    printf("sent: %d bytes from %s\n", strlen(buffer),filename);
 		// calculate the size of the packet to be sent
 		if (file_size - bytes > sizeof(buffer))
 			packet_size = sizeof(buffer);
 		else
 			packet_size = file_size - bytes;
-    //buffer[packet_size] = '\0';
 		// send the packet and store the number of bytes that have been sent
 		bytes += sendto(client_sock, buffer, packet_size, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
 
@@ -293,12 +296,6 @@ void *sendThread(void *arguments) {
 		// don't send tile if the status is set to 100 -> user not looking in that location
 		sprintf(gop_num, "%d", i);
 		sendGOP(start_time, servaddr, client_sock, args->tile_num, row, column, gop_num, status);
-		// sleep until next frame needs to be sent
-		// don't send additional tiles untill the current frame ends -> 1.07 seconds
-    time_left = SPF - (time(NULL) - start_time);
-		if (time_left >= 0) {
-			sleep(time_left);
-    }
 	}
 
 	return 0;

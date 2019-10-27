@@ -187,7 +187,7 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
   FILE * fp = NULL;
   struct sockaddr_in cliaddr;
   // read in the given file for every frame
-  while (curr_gop < 2) {
+  while (curr_gop < GOP_COUNT) {
     if (flag == 0) {
       recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
       flag = 1;
@@ -284,14 +284,14 @@ int main(int argc, char
   struct thread_args args[TILE_COUNT]; // array for argument structs
 
   /* create udp threads for listening at each port for the corresponding tile */
-  for (i = 0; i < 1; i++) {
+  for (i = 0; i < TILE_COUNT; i++) {
     args[i].tile_num = i;
     /* create thread to send videos */
     pthread_create( & thread_array[i], NULL, & receiveThread, (void * ) & args[i]);
   }
   pthread_create( & ack, NULL, ackThread, NULL);
   /* wait for threads to end */
-  for (i = 0; i < 1; i++) {
+  for (i = 0; i < TILE_COUNT; i++) {
     pthread_join(thread_array[i], NULL);
   }
   return 0;
