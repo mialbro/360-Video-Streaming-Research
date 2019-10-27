@@ -198,9 +198,9 @@ int getFileSize(FILE *fp) {
   return file_size;
 }
 
-void sendHeader(int client_sock, int start_time, struct servaddr) {
+void sendHeader(int client_sock, int start_time, struct sockaddr_in servaddr) {
   sendto(client_sock, header, sizeof(header), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-  time_left = SPF - (time(NULL) - start_time);
+  double time_left = SPF - (time(NULL) - start_time);
   if (time_left > 0)
     sleep(time_left);
 }
@@ -266,7 +266,7 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	fclose(fp);
   // sleep if we have time left
   time_left = SPF - (time(NULL) - start_time);
-  printf("time-left: %ld\n", time_left);
+  printf("time-left: %f\n", time_left);
   if (time_left > 0)
     sleep(time_left);
 }
