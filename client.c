@@ -258,6 +258,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		// if we can't send the file quick enough (in 1.07 seconds)
 		// quit early!
     time_left = SPF - (time(NULL) - start_time);
+    printf("time-left: %f\n", time_left);
 		if (time_left <= 0) {
 			break;
 		}
@@ -267,7 +268,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 	fclose(fp);
   // sleep if we have time left
   time_left = SPF - (time(NULL) - start_time);
-  printf("time-left: %f\n", time_left);
+  printf("\n");
   if (time_left > 0)
     sleep(time_left);
 }
