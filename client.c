@@ -257,12 +257,13 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		// make sure we don't take too long sending packet
 		// if we can't send the file quick enough (in 1.07 seconds)
 		// quit early!
-    time_left = SPF - (time(NULL) - start_time);
+    elapsed_time = time(NULL) - start_time;
+    time_left = SPF - elapsed_time;
     printf("time-left: %f\n", time_left);
 		if (time_left <= 0) {
 			break;
 		}
-    elapsed_time = time(NULL) - start_time;
+
     setTimeout(client_sock, elapsed_time);
 	}
 	fclose(fp);
@@ -318,7 +319,7 @@ int main(int argc, char const *argv[]) {
     bandwidth = (double*)malloc(1*sizeof(int));
     /* create thread to calculate bandwidth */
     pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
-		for (i = 0; i < 1; i++) {
+		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
       // store adress of bandwidth value
@@ -327,7 +328,7 @@ int main(int argc, char const *argv[]) {
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
 		/* wait for threads to end */
-		for ( i = 0; i < 1; i++) {
+		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
 		return 0;
