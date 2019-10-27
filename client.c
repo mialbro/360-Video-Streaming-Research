@@ -164,7 +164,7 @@ int setRowCol(char *row, char *column, int tile_num) {
 // filename = getFilename(row, column, gop_num, status);
 char *getFilename(char *filename, char *row, char *column, char *gop_num, char *status) {
   memset(filename, 0, sizeof(filename));
-	strcat(filename, "./video_files/gop");
+	strcat(filename, "./media/pi/12BF-9A5D/gop");
 	strcat(filename, gop_num);
 	strcat(filename, "/");
 	strcat(filename, "AngelSplit");
