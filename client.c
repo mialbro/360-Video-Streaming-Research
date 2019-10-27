@@ -198,6 +198,13 @@ int getFileSize(FILE *fp) {
   return file_size;
 }
 
+void sendHeader(int client_sock, int start_time, struct servaddr) {
+  sendto(client_sock, header, sizeof(header), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+  time_left = SPF - (time(NULL) - start_time);
+  if (time_left > 0)
+    sleep(time_left);
+}
+
 /*
 sends the same tile for every frame
 */
@@ -221,12 +228,10 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 		 do not send it. just send header
 	*/
 	if (strcmp(status, "100") == 0) {
-		sendto(client_sock, header, sizeof(header), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-    time_left = SPF - (time(NULL) - start_time);
-    if (time_left > 0)
-      sleep(time_left);
-		return 0;
+    sendHeader(client_sock, start_time, servaddr);
+    return 0;
 	}
+
 	/* open file to send */
 	fp = fopen(filename, "rb");
 	if (fp == NULL) {
@@ -261,6 +266,7 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	fclose(fp);
   // sleep if we have time left
   time_left = SPF - (time(NULL) - start_time);
+  printf("time-left: %ld\n", time_left);
   if (time_left > 0)
     sleep(time_left);
 }
@@ -297,7 +303,6 @@ void *sendThread(void *arguments) {
 		sprintf(gop_num, "%d", i);
 		sendGOP(start_time, servaddr, client_sock, args->tile_num, row, column, gop_num, status);
 	}
-
 	return 0;
 }
 
