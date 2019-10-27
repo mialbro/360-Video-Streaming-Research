@@ -164,7 +164,7 @@ int setRowCol(char *row, char *column, int tile_num) {
 // filename = getFilename(row, column, gop_num, status);
 char *getFilename(char *filename, char *row, char *column, char *gop_num, char *status) {
   memset(filename, 0, sizeof(filename));
-	strcat(filename, "./media/pi/12BF-9A5D/gop");
+	strcat(filename, "/media/pi/12BF-9A5D/video_files/gop");
 	strcat(filename, gop_num);
 	strcat(filename, "/");
 	strcat(filename, "AngelSplit");
@@ -222,6 +222,7 @@ int sendGOP(double start_time, struct sockaddr_in servaddr, int client_sock, int
 	/* open file to send */
 	fp = fopen(filename, "rb");
 	if (fp == NULL) {
+		printf("could not find: %s\n", filename);
 		return 0;
 	}
 	// get the file size
@@ -285,7 +286,7 @@ void *sendThread(void *arguments) {
 		each time we will receive a tile from this row / column.
 		this represents the same tile from every frame of the video.
 	*/
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < GOP_COUNT; i++) {
 		// read file to get the status (quality) of the tile to be selected
 		getStatus(status, i, arguments);
 		start_time = time(NULL);
@@ -314,7 +315,7 @@ int main(int argc, char const *argv[]) {
     bandwidth = (double*)malloc(1*sizeof(int));
     /* create thread to calculate bandwidth */
     pthread_create(&bandwidth_thread, NULL, &calculateBandwidth, (void *)bandwidth);
-		for (i = 0; i < 1; i++) {
+		for (i = 0; i < TILE_COUNT; i++) {
 			args[i].tile_num = i;
 			args[i].gop = gop;
       // store adress of bandwidth value
@@ -323,7 +324,7 @@ int main(int argc, char const *argv[]) {
 			pthread_create(&thread_array[i], NULL, &sendThread, (void *)&args[i]);
 		}
 		/* wait for threads to end */
-		for ( i = 0; i < 1; i++) {
+		for ( i = 0; i < TILE_COUNT; i++) {
 			pthread_join(thread_array[i], NULL);
 		}
 		return 0;
