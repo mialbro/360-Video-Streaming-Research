@@ -259,7 +259,6 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 		// quit early!
     elapsed_time = time(NULL) - start_time;
     time_left = SPF - elapsed_time;
-    printf("time-left: %f\n", time_left);
 		if (time_left <= 0) {
 			break;
 		}
