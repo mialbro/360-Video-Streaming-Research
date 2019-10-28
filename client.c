@@ -149,10 +149,7 @@ int getStatus(char *status, int gop_num, struct thread_args *args) {
     rateIndex = 0;
   // get the tile value given the calculated bandwidth
   tile_val = gop[gop_num].tile_vals[rateIndex][tile_num];
-  if (tile_val != 100)
-    sprintf(status, "%d", 12);
-  else
-    sprintf(status, "%d", tile_val);
+  sprintf(status, "%d", tile_val);
 }
 
 
