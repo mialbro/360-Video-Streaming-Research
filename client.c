@@ -153,7 +153,6 @@ int getStatus(char *status, int gop_num, struct thread_args *args) {
     sprintf(status, "%d", 12);
   else
     sprintf(status, "%d", tile_val);
-
 }
 
 
@@ -255,7 +254,7 @@ int sendGOP(struct sockaddr_in servaddr, int client_sock, int tile_num, char *ro
 			packet_size = file_size - bytes;
 		// send the packet and store the number of bytes that have been sent
 		bytes += sendto(client_sock, buffer, packet_size, 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-		
+
 
 		// clear the buffer
 		memset(buffer, 0, sizeof(buffer));
