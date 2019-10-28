@@ -95,9 +95,8 @@ void setRowCol(char * row, char * col, int tile_num) {
  * The return value is a pointer to the beginning of the sub-string, or
  * NULL if the substring is not found.
  */
-void * memmem(const void * haystack, size_t hlen,
-  const void * needle, size_t nlen, int * hIndex) {
-  int needle_first, index;
+void * memmem(const void * haystack, size_t hlen, const void * needle, size_t nlen, int * hIndex) {
+  int needle_first, index = 0;
   const void * p = haystack;
   size_t plen = hlen;
   * hIndex = -1;
@@ -106,11 +105,11 @@ void * memmem(const void * haystack, size_t hlen,
   needle_first = * (unsigned char * ) needle;
   while (plen >= nlen && (p = memchr(p, needle_first, plen - nlen + 1))) {
     if (!memcmp(p, needle, nlen)) {
-      * hIndex = index;
+      * hIndex = (int)(p - haystack);
       return (void * ) p;
     }
     p++;
-    index++;
+    index += 1;
     plen = hlen - (p - haystack);
   }
   return NULL;
@@ -142,9 +141,8 @@ void setTimeout(int server_sock, double elapsed_time) {
 /* split the new and previous gop data */
 void splitBuffer(char * headerPtr, char * buffer, char * newFileBuffer, char * prevFileBuffer, int hIndex, int bytes) {
   char * ptr = NULL;
-  int newSize = bytes - hIndex;
   // copy the part of the buffer that contains the new file to newFileBuffer
-  memcpy(newFileBuffer, headerPtr, newSize);
+  memcpy(newFileBuffer, headerPtr, bytes-hIndex);
   // copy the part of the buffer that contains the current file to prevFileBuffer
   if (hIndex > 0) {
     ptr = & buffer[0];
@@ -152,13 +150,13 @@ void splitBuffer(char * headerPtr, char * buffer, char * newFileBuffer, char * p
   }
 }
 
-void writeNewFile(FILE * fp, char * newFileBuffer, char * filename, char * gop_num, char * tile_num, char * row, char * col, int curr_gop) {
+void writeNewFile(FILE * fp, char * buffer, char * filename, char * gop_num, char * tile_num, char * row, char * col, int curr_gop, int bytes, int hIndex) {
   // create new file to begin writing to it
   sprintf(gop_num, "%d", curr_gop);
   setFilename(filename, gop_num, tile_num, row, col);
   strcat(filename, ".bin");
   fp = fopen(filename, "wb");
-  fwrite(newFileBuffer, 1, sizeof(newFileBuffer), fp);
+  fwrite(buffer, 1, bytes - hIndex, fp);
 }
 
 void savePrevFile(FILE * fp, char * buffer) {
@@ -187,11 +185,12 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
   FILE * fp = NULL;
   struct sockaddr_in cliaddr;
   // read in the given file for every frame
-  while (curr_gop < GOP_COUNT) {
+  while (curr_gop <= GOP_COUNT) {
     if (flag == 0) {
       recvfrom(server_sock, buffer, 1, MSG_PEEK, (struct sockaddr * ) & cliaddr, & len);
       flag = 1;
     }
+		setTimeout(server_sock, elapsed_time);
     bytes = 0;
     // clear buffers
     clearBuffers(buffer, newFileBuffer, prevFileBuffer);
@@ -199,23 +198,34 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
     bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr * ) & cliaddr, & len);
     packet_time = time(NULL) - packet_start;
     if (bytes > 0) {
+			//printf("got %d bytes from %s\n", bytes, filename);
       // return pointer to the beginning of substring (needle)
       headerPtr = memmem(buffer, sizeof(buffer), header, sizeof(header), & hIndex);
+			if (hIndex > 0) {
+				printf("%s starts at %d\n", filename, hIndex);
+			}
       // receiving new file
       if (headerPtr != NULL) {
-        // save and close previous file
+				splitBuffer(headerPtr, buffer, newFileBuffer, prevFileBuffer, hIndex, bytes);
         if (fp != NULL) {
-          // split the buffers between new file and prev file
-          splitBuffer(headerPtr, buffer, newFileBuffer, prevFileBuffer, hIndex, bytes);
           if (hIndex > 0) {
-            savePrevFile(fp, prevFileBuffer);
+						printf("messy!\n");
+            //savePrevFile(fp, prevFileBuffer);
+						fwrite(prevFileBuffer, 1, hIndex, fp);
+						//printf("(1) writing %d to %s\n", hIndex, filename);
           }
-          closeFile(fp);
+					fclose(fp);
+					fp = NULL;
         }
-        // save to new file
+        // not only sent header
         if ((bytes - hIndex) > sizeof(header)) {
-          // write data to new file
-          writeNewFile(fp, newFileBuffer, filename, gop_num, tile_num, row, col, curr_gop);
+          //writeNewFile(fp, buffer, filename, gop_num, tile_num, row, col, curr_gop, bytes, hIndex);
+					sprintf(gop_num, "%d", curr_gop);
+					setFilename(filename, gop_num, tile_num, row, col);
+					strcat(filename, ".bin");
+					fp = fopen(filename, "wb");
+					fwrite(newFileBuffer, 1, bytes - hIndex, fp);
+					//printf("(2) writing %d to %s\n", bytes - hIndex, filename);
         }
         // only new file
         if (hIndex == 0 && (bytes - hIndex) > sizeof(header)) {
@@ -232,18 +242,28 @@ int getGOP(int server_sock, char * tile_num, char * row, char * col) {
         curr_gop += 1;
       }
       // add to previous file
-      if (bytes > 0 && fp != NULL) {
+      else if (bytes > 0 && fp != NULL) {
         fwrite(buffer, 1, bytes, fp);
+				//printf("(3) writing %d to %s\n", bytes, filename);
         elapsed_time = elapsed_time + packet_time;
       }
     }
+		else if (bytes < 0) {
+			elapsed_time = 0;
+			if (fp != NULL) {
+				fclose(fp);
+				fp = NULL;
+			}
+		}
     // if we timeout, then restart elapsed time and start sending next frame
     if (elapsed_time >= SPF && curr_gop > 0) {
-      //printf("leaving %d\n", curr_gop);
+			//printf("leaving from %s early\n", filename);
       elapsed_time = 0.0;
-      closeFile(fp);
+      if (fp != NULL) {
+				fclose(fp);
+				fp = NULL;
+			}
     }
-    setTimeout(server_sock, elapsed_time);
   }
   return 0;
 }
