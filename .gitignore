@@ -6,3 +6,4 @@ server.o
 client.o
 server.exe
 client.exe
+a.out
