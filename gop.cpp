@@ -67,6 +67,32 @@ void GOP::setGop(int i) {
   gop = i;
   return;
 }
-void GOP::createFilenames() {
-  return;
+
+int GOP::getRow(int index, int gopRow) {
+  return row[gopRow][index];
+}
+
+int GOP::getColumn(int index, int gopRow) {
+  return column[gopRow][index];
+}
+
+int UDP::getTileValue(int index, int gopRow) {
+  return tiles[1][gopRow][index];
+}
+
+int selectGopRow(double throughput) {
+  int i = 0, rateIndex = 0;
+  double smallestDiff = 0.0, diff = 0.0;
+  // make the first bw option be the value
+  smallestDiff = throughput - bwVals[0];
+  // loop through the available bandwidths
+  // and select the one closes to our calculated value
+  for (int i = 0; i < BW_COUNT; i++) {
+    diff = throughput - bwVals[i];
+    if ( (diff < smallest_diff) && (diff >= 0) ) {
+      smallestDiff = diff;
+      rateIndex = i;
+    }
+  }
+  return rateIndex;
 }

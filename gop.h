@@ -16,7 +16,10 @@ public:
   void setRowCol();
   // set the group of picture number
   void setGop(int i);
-  void createFilenames();
+  int getRow(int index, int gopRow);
+  int getColumn(int index, int gopRow);
+  int getTileValue(int index, int gopRow);
+  int selectGopRow(double throughput);
 };
 
 #endif

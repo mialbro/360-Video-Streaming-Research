@@ -39,7 +39,6 @@ int UDP::receiveData(char *data, int byteCount) {
   struct sockaddr_in cliaddr;
   int bytes = 0;
   socklen_t len = 0;
-  //bytes = recvfrom(server_sock, buffer, BUFFER_SIZE, 0, (struct sockaddr * ) & cliaddr, & len);
   bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)&cliaddr, &len);
   return bytes;
 }
@@ -50,4 +49,12 @@ int UDP::peek(char *data, int byteCount) {
   socklen_t len = 0;
   bytes = recvfrom(fd, data, byteCount, MSG_PEEK, (struct sockaddr*)&cliaddr, &len);
   return bytes;
+}
+
+void UDP::setTp(double tp) {
+  throughput = tp;
+}
+
+double UDP::getTp() {
+  return throughput;
 }

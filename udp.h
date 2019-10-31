@@ -16,6 +16,8 @@ public:
   int sendData(char *data, int byteCount);
   int receiveData(char *data, int byteCount);
   int peek(char *data, int byteCount);
+  void setTp(double tp);
+  double getTp();
 };
 
 #endif
