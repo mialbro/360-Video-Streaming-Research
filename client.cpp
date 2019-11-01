@@ -7,6 +7,10 @@
 #include <bits/stdc++.h>
 #include <sstream>
 #include <iomanip>
+#include <thread>
+#include <math.h>
+#include <functional>
+#include <time.h>
 
 #include "udp.h"
 #include "gop.h"
@@ -95,12 +99,12 @@ string getHeader(string header, int gop, int row, int column, int fileSize) {
   return header;
 }
 
-void sendGops(UDP udp, GOP gop[]) {
+void sendGops(UDP& udp, GOP gop[]) {
   double tp = 0.0;
   int gopRow = 0, tileValue = 0, tileColumn = 0, tileRow = 0, fileSize = 0;
   string filename, header;
-  for (int i = 0; i < 1; i++) {
-    for (int j = 0; j < 1; j++) {
+  for (int i = 0; i < GOP_COUNT; i++) {
+    for (int j = 0; j < TILE_COUNT; j++) {
       tp = udp.getTp(); // get the throughput value
       gopRow = gop[i].selGopRow(tp);  // select which tile row to send (corresponds to throughput value)
       tileValue = gop[i].getValue(j, gopRow); // get the tile's value
@@ -110,7 +114,6 @@ void sendGops(UDP udp, GOP gop[]) {
         filename = getFilename(filename, i, tileRow, tileColumn, tileValue);  // get filename
         fileSize = getFileSize(filename); // get the size of the file
         header = getHeader(header, i, tileRow, tileColumn, fileSize);
-        cout << header << endl;
         fileSize += header.length(); // add header length to the file size
         sendFile(udp, filename, header, fileSize);  // read in the file and send it to the server
       }
@@ -122,13 +125,37 @@ void sendGops(UDP udp, GOP gop[]) {
   }
 }
 
+void tp(UDP& client) {
+  char buffer[100];
+  memset(buffer, 'x', 100);
+  buffer[99] = '\0';
+  clock_t t;
+  double tp = 0.0, elapsed = 0.0;
+  while (1) {
+    t = clock();
+    client.sendData(buffer, sizeof(buffer));
+    client.receiveData(NULL, sizeof(buffer));
+    t = clock() - t;
+    elapsed = ((float)t)/CLOCKS_PER_SEC;
+    tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
+    client.setTp(tp);
+  }
+}
+
 int main() {
   GOP gop[10];
+  char addr[] = "192.168.0.2";
+  char dest[] = "192.168.0.1";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
-  UDP client = UDP("192.168.0.2", "192.168.0.1", 0, 0);
-  sendGops(client, gop);
+  UDP client = UDP(addr, dest, 0, 0);
+
+  // send file thread
+  thread gopThread(sendGops, ref(client), gop);
+  thread tpThread(tp, ref(client));
+  gopThread.join();
+  tpThread.join();
   //sendFile("./video_files/gop0/AngelSplit1-1/qp1/str.bin",header);
   // D:\reps\360-video\video_files\gop0\AngelSplit1-1\qp1
   //UDP client = UDP("192.168.0.2", "192.168.0.1", 0, 0);
