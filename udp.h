@@ -8,16 +8,16 @@ using namespace std;
 
 class UDP {
 private:
-  int fd;
+  int fd; // file descriptor
   double throughput;
   struct sockaddr_in myaddr, destaddr;
 public:
-  UDP(char *myAddress, char *destAddress, int myPort, int destPort);
-  int sendData(char *data, int byteCount);
-  int receiveData(char *data, int byteCount);
-  int peek(char *data, int byteCount);
-  void setTp(double tp);
-  double getTp();
+  UDP(char *myAddress, char *destAddress, int myPort, int destPort);  // constructor
+  int sendData(char *data, int byteCount);  // send data to destaddr
+  int receiveData(char *data, int byteCount); // listen for data
+  int peek(char *data, int byteCount);  // peek at buffer
+  void setTp(double tp);  // set the throughput
+  double getTp(); // get the through
 };
 
 #endif

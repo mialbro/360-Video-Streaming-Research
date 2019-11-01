@@ -17,13 +17,17 @@ using namespace std;
 GOP::GOP() {
   gop = 0;
 }
-void GOP::setBw(int i, int value) {
-  bwVals[i] = value;
-}
+
+// initialize the tile
 void GOP::setTile(int row, int column, int position, int value) {
   tiles[0][row][column] = position;  // store the tile position
   tiles[1][row][column] = value;  // store the tile value
 }
+
+void GOP::setBw(int i, int value) {
+  bwVals[i] = value;
+}
+
 // show the tile values
 void GOP::displayTiles() {
   for (int i = 0; i < BW_COUNT; i++) {
@@ -33,7 +37,8 @@ void GOP::displayTiles() {
     cout << "\n\n\n";
   }
 }
-// sort the tiles
+
+// sort the tiles by the tile values, in increasing order
 void GOP::sortTiles() {
   for (int i = 0; i < BW_COUNT; i++) {
     pair<int, int> pairt[TILE_COUNT]; // create pairs for tile position and value
@@ -50,6 +55,7 @@ void GOP::sortTiles() {
     }
   }
 }
+
 // set the row and column values
 void GOP::setRowCol() {
   int position = 0;
@@ -76,11 +82,11 @@ int GOP::getColumn(int index, int gopRow) {
   return column[gopRow][index];
 }
 
-int UDP::getTileValue(int index, int gopRow) {
+int GOP::getValue(int index, int gopRow) {
   return tiles[1][gopRow][index];
 }
 
-int selectGopRow(double throughput) {
+int GOP::selGopRow(double throughput) {
   int i = 0, rateIndex = 0;
   double smallestDiff = 0.0, diff = 0.0;
   // make the first bw option be the value
@@ -89,7 +95,7 @@ int selectGopRow(double throughput) {
   // and select the one closes to our calculated value
   for (int i = 0; i < BW_COUNT; i++) {
     diff = throughput - bwVals[i];
-    if ( (diff < smallest_diff) && (diff >= 0) ) {
+    if ( (diff < smallestDiff) && (diff >= 0) ) {
       smallestDiff = diff;
       rateIndex = i;
     }

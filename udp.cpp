@@ -30,19 +30,21 @@ UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
   printf("client created\n");
 }
 
+// send data to destaddr
 int UDP::sendData(char *data, int byteCount) {
   int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, sizeof(destaddr));
   return bytes;
 }
 
+// listen for data. Set destaddr
 int UDP::receiveData(char *data, int byteCount) {
-  struct sockaddr_in cliaddr;
   int bytes = 0;
   socklen_t len = 0;
-  bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)&cliaddr, &len);
+  bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, &len);
   return bytes;
 }
 
+// look at the buffer
 int UDP::peek(char *data, int byteCount) {
   struct sockaddr_in cliaddr;
   int bytes = 0;
@@ -51,10 +53,12 @@ int UDP::peek(char *data, int byteCount) {
   return bytes;
 }
 
+// set the throughput
 void UDP::setTp(double tp) {
   throughput = tp;
 }
 
+// return the throughput
 double UDP::getTp() {
   return throughput;
 }
