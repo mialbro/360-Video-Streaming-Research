@@ -11,6 +11,7 @@
 using namespace std;
 
 UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
+  pulse = true; // alive
   if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("cannot create socket");
   }
@@ -61,4 +62,13 @@ void UDP::setTp(double tp) {
 // return the throughput
 double UDP::getTp() {
   return throughput;
+}
+
+void UDP::kill() {
+  pulse = false;
+  return;
+}
+
+bool UDP::checkPulse() {
+  return pulse;
 }

@@ -78,6 +78,7 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
     }
     // send packet to server
     //myFile.write(buffer, packetSize);
+    udp.sendData(buffer, packetSize); // send the data to the server
     bytesRead += packetSize;
   }
   return;
@@ -123,6 +124,7 @@ void sendGops(UDP& udp, GOP gop[]) {
       }
     }
   }
+  udp.kill();
 }
 
 void tp(UDP& client) {
@@ -131,7 +133,7 @@ void tp(UDP& client) {
   buffer[99] = '\0';
   clock_t t;
   double tp = 0.0, elapsed = 0.0;
-  while (1) {
+  while (client.checkPulse() == true) {
     t = clock();
     client.sendData(buffer, sizeof(buffer));
     client.receiveData(NULL, sizeof(buffer));

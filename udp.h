@@ -9,6 +9,7 @@ using namespace std;
 class UDP {
 private:
   int fd; // file descriptor
+  bool pulse;
   double throughput;
   struct sockaddr_in myaddr, destaddr;
 public:
@@ -18,6 +19,8 @@ public:
   int peek(char *data, int byteCount);  // peek at buffer
   void setTp(double tp);  // set the throughput
   double getTp(); // get the through
+  void kill();
+  bool checkPulse();
 };
 
 #endif

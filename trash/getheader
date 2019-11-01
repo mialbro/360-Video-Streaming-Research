@@ -1,0 +1,12 @@
+if (bytesRead == 0) {
+  int hI = 64000 - 16;
+  char nameBuffer[7], sizeBuffer[10];
+  string name;
+  int size = 0;
+  copy(&buffer[hI], &buffer[hI+6],&nameBuffer[0]);
+  copy(&buffer[hI+8], &buffer[hI+16], &sizeBuffer[0]);
+  name = nameBuffer;
+  sscanf(sizeBuffer, "%d", &size);
+  cout << "_" << name << "_ ";
+  cout << "_" << size << "_" << endl << endl;
+}
