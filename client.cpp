@@ -61,7 +61,6 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
   char buffer[64000];
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
-  //ofstream myFile ("data.bin", ios::out | ios::binary);
   // read the file
   while (bytesRead < fileSize) {
     fill_n(buffer, 64000, 0); // clear buffer
@@ -76,11 +75,10 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
     else {
       inFile.read(buffer, packetSize); // make space for header
     }
-    // send packet to server
-    //myFile.write(buffer, packetSize);
     udp.sendData(buffer, packetSize); // send the data to the server
     bytesRead += packetSize;
   }
+  inFile.close(); // close the file
   return;
 }
 
@@ -130,7 +128,7 @@ void sendGops(UDP& udp, GOP gop[]) {
 void tp(UDP& client) {
   char buffer[100];
   memset(buffer, 'x', 100);
-  buffer[99] = '\0';
+  buffer[100] = '\0';
   clock_t t;
   double tp = 0.0, elapsed = 0.0;
   while (client.checkPulse() == true) {
@@ -158,8 +156,5 @@ int main() {
   thread tpThread(tp, ref(client));
   gopThread.join();
   tpThread.join();
-  //sendFile("./video_files/gop0/AngelSplit1-1/qp1/str.bin",header);
-  // D:\reps\360-video\video_files\gop0\AngelSplit1-1\qp1
-  //UDP client = UDP("192.168.0.2", "192.168.0.1", 0, 0);
   return 0;
 }

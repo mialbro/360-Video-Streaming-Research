@@ -28,7 +28,7 @@ UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
   destaddr.sin_addr.s_addr = inet_addr(destAddress);
   destaddr.sin_port = htons(destPort);
   throughput = 0.0;
-  printf("client created\n");
+  printf("started\n");
 }
 
 // send data to destaddr
