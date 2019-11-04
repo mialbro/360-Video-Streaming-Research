@@ -30,7 +30,9 @@ void receiveGops(UDP& server) {
   string filename;
   // receive data
   while (1) {
+    cout << "1" << endl;
     bytesRec = server.receiveData(buffer, 64000); // get the first packet
+    cout << "2" << endl;
     copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
     copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
     filename = nameBuffer;  // convert filename to string
@@ -53,8 +55,8 @@ void receiveGops(UDP& server) {
 }
 
 int main() {
-  char addr[] = "192.168.0.2";
-  char dest[] = "192.168.0.1";
+  char addr[] = "192.168.0.1";
+  char dest[] = "192.168.0.2";
 
   UDP server = UDP(addr, dest, 0, 0);
   thread gopThread(receiveGops, ref(server));

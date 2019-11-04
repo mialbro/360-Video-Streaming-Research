@@ -12,7 +12,7 @@ using namespace std;
 
 UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
   pulse = true; // alive
-  if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
     perror("cannot create socket");
   }
   // set device info
@@ -28,12 +28,15 @@ UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
   destaddr.sin_addr.s_addr = inet_addr(destAddress);
   destaddr.sin_port = htons(destPort);
   throughput = 0.0;
-  printf("started\n");
+  // connect to destination
+  if (connect(fd, (struct sockaddr *)&destaddr, sizeof(destaddr)) < 0) {
+    printf("ERROR!\n");
+  }
 }
 
 // send data to destaddr
 int UDP::sendData(char *data, int byteCount) {
-  int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, sizeof(destaddr));
+  int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)NULL, sizeof(destaddr));
   return bytes;
 }
 
@@ -41,7 +44,7 @@ int UDP::sendData(char *data, int byteCount) {
 int UDP::receiveData(char *data, int byteCount) {
   int bytes = 0;
   socklen_t len = 0;
-  bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, &len);
+  bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)NULL, NULL);
   return bytes;
 }
 

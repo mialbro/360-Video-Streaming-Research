@@ -115,6 +115,7 @@ void sendGops(UDP& udp, GOP gop[]) {
         header = getHeader(header, i, tileRow, tileColumn, fileSize);
         fileSize += header.length(); // add header length to the file size
         sendFile(udp, filename, header, fileSize);  // read in the file and send it to the server
+	//cout << "sent " << filename << endl;
       }
       // Don't send rest of the tiles. Move on to next gop
       else {
