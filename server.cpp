@@ -25,7 +25,7 @@ void tp(UDP& server) {
 }
 
 void receiveGops(UDP& server) {
-  char buffer[64000], nameBuffer[7], sizeBuffer[10];
+  char buffer[64000], nameBuffer[12], sizeBuffer[12];
   int bytesRec = 0, fileSize = 0, packetSize = 0, hI = 64000 - 16;
   string filename;
   // receive data
@@ -34,7 +34,7 @@ void receiveGops(UDP& server) {
     copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
     copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
     filename = nameBuffer;  // convert filename to string
-    filename = "./received" + filename;
+    filename = "/received/" + filename + ".bin";
     sscanf(sizeBuffer, "%d", &fileSize);  // convert filesize to string
     cout << fileSize << endl;
     ofstream file (filename, ios::out | ios::binary); // open file to begin writing
@@ -42,14 +42,14 @@ void receiveGops(UDP& server) {
     // read in rest of the packets
     while (bytesRec < fileSize) {
       packetSize = 64000;
-      if (bytesRec + packetSize > fileSize)
+      if (fileSize - bytesRec < 64000)
         packetSize = fileSize - bytesRec;
       bytesRec += server.receiveData(buffer, packetSize);
       file.write(buffer, packetSize); // write packet to the file
-      fill_n(buffer, 64000, 0); // clear the buffer
+      memset(buffer, 0, 64000); // clear the buffer
     }
-    fill_n(nameBuffer, 7, 0); // clear name buffer
-    fill_n(sizeBuffer, 10, 0);  // clear file size buffer
+    memset(nameBuffer, 0, 12); // clear name buffer
+    memset(sizeBuffer, 0, 12);  // clear file size buffer
     file.close(); // close current file
   }
 }

@@ -63,9 +63,9 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
   // read the file
   while (bytesRead < fileSize) {
-    fill_n(buffer, 64000, 0); // clear buffer
+    memset(buffer, 0, 64000); // clear buffer
     packetSize = 64000;
-    if (fileSize - bytesRead < 64000) // if ear the end of the fil-e
+    if (fileSize - bytesRead < 64000) // if near the end of the file
       packetSize = fileSize - bytesRead;
     // add header to buffer
     if (bytesRead == 0) {
