@@ -36,7 +36,7 @@ void receiveGops(UDP& server) {
     filename = nameBuffer;  // convert filename to string
     filename = "./received" + filename;
     sscanf(sizeBuffer, "%d", &fileSize);  // convert filesize to string
-    cout fileSize << endl;
+    cout << fileSize << endl;
     ofstream file (filename, ios::out | ios::binary); // open file to begin writing
     file.write(buffer, packetSize - 16);  // write the first packet - header, to the file
     // read in rest of the packets
