@@ -8,6 +8,8 @@
 #include <arpa/inet.h>
 #include "udp.h"
 
+#define START_PORT 8080
+
 using namespace std;
 
 UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
@@ -19,14 +21,14 @@ UDP::UDP(char *myAddress, char *destAddress, int myPort, int destPort) {
   memset((char *)&myaddr, 0, sizeof(myaddr));
   myaddr.sin_family = AF_INET;
   myaddr.sin_addr.s_addr = inet_addr(myAddress);
-  myaddr.sin_port = htons(myPort);
+  myaddr.sin_port = htons(myPort + START_PORT);
   if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
     perror("bind failed");
   }
   // set destination info
   destaddr.sin_family = AF_INET;
   destaddr.sin_addr.s_addr = inet_addr(destAddress);
-  destaddr.sin_port = htons(destPort);
+  destaddr.sin_port = htons(destPort + START_PORT);
   throughput = 0.0;
   // connect to destination
   if (connect(fd, (struct sockaddr *)&destaddr, sizeof(destaddr)) < 0) {

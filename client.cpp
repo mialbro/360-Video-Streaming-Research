@@ -129,13 +129,15 @@ void sendGops(UDP& udp, GOP gop[]) {
 void tp(UDP& client) {
   char buffer[100];
   memset(buffer, 'x', 100);
-  buffer[100] = '\0';
   clock_t t;
   double tp = 0.0, elapsed = 0.0;
   while (client.checkPulse() == true) {
     t = clock();
+    cout << "1" << endl;
     client.sendData(buffer, sizeof(buffer));
-    client.receiveData(NULL, sizeof(buffer));
+    cout << "2" << endl;
+    client.receiveData(buffer, sizeof(buffer));
+    cout << "3" << endl;
     t = clock() - t;
     elapsed = ((float)t)/CLOCKS_PER_SEC;
     tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
