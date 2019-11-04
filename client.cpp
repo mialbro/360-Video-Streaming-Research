@@ -133,11 +133,8 @@ void tp(UDP& client) {
   double tp = 0.0, elapsed = 0.0;
   while (client.checkPulse() == true) {
     t = clock();
-    cout << "1" << endl;
     client.sendData(buffer, sizeof(buffer));
-    cout << "2" << endl;
     client.receiveData(buffer, sizeof(buffer));
-    cout << "3" << endl;
     t = clock() - t;
     elapsed = ((float)t)/CLOCKS_PER_SEC;
     tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);

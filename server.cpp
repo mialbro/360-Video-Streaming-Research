@@ -30,13 +30,13 @@ void receiveGops(UDP& server) {
   string filename;
   // receive data
   while (1) {
-    cout << "1" << endl;
     bytesRec = server.receiveData(buffer, 64000); // get the first packet
-    cout << "2" << endl;
     copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
     copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
     filename = nameBuffer;  // convert filename to string
+    filename = "./received" + filename;
     sscanf(sizeBuffer, "%d", &fileSize);  // convert filesize to string
+    cout fileSize << endl;
     ofstream file (filename, ios::out | ios::binary); // open file to begin writing
     file.write(buffer, packetSize - 16);  // write the first packet - header, to the file
     // read in rest of the packets
