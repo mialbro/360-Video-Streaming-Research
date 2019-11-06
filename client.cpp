@@ -11,6 +11,7 @@
 #include <math.h>
 #include <functional>
 #include <time.h>
+#include <chrono>
 
 #include "udp.h"
 #include "gop.h"
@@ -58,6 +59,7 @@ void appendHeader(char *buffer, string header, int packetSize) {
 
 // read in binary file
 void sendFile(UDP udp, string filename, string header, int fileSize) {
+  //cout << header << endl;
   char buffer[64000];
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
@@ -70,13 +72,14 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
     // add header to buffer
     if (bytesRead == 0) {
       inFile.read(buffer, packetSize - header.length()); // make space for header
-      appendHeader(buffer, header, packetSize - (header.length())); // add header
+      appendHeader(buffer, header, packetSize - header.length()); // add header
     }
     else {
       inFile.read(buffer, packetSize); // make space for header
     }
     udp.sendData(buffer, packetSize); // send the data to the server
     bytesRead += packetSize;
+    this_thread::sleep_for(chrono::milliseconds(50));
   }
   inFile.close(); // close the file
   return;
@@ -105,6 +108,7 @@ void sendGops(UDP& udp, GOP gop[]) {
   for (int i = 0; i < GOP_COUNT; i++) {
     for (int j = 0; j < TILE_COUNT; j++) {
       tp = udp.getTp(); // get the throughput value
+      cout << tp << endl;
       gopRow = gop[i].selGopRow(tp);  // select which tile row to send (corresponds to throughput value)
       tileValue = gop[i].getValue(j, gopRow); // get the tile's value
       if (tileValue != 100) {
@@ -118,27 +122,28 @@ void sendGops(UDP& udp, GOP gop[]) {
 	//cout << "sent " << filename << endl;
       }
       // Don't send rest of the tiles. Move on to next gop
-      else {
-        break;
-      }
     }
   }
   udp.kill();
 }
 
-void tp(UDP& client) {
+void tp(UDP& ack, UDP &client) {
   char buffer[100];
   memset(buffer, 'x', 100);
   clock_t t;
   double tp = 0.0, elapsed = 0.0;
-  while (client.checkPulse() == true) {
+  while (ack.checkPulse() == true) {
     t = clock();
-    client.sendData(buffer, sizeof(buffer));
-    client.receiveData(buffer, sizeof(buffer));
+    ack.sendData(buffer, sizeof(buffer));
+    ack.receiveData(buffer, sizeof(buffer));
     t = clock() - t;
     elapsed = ((float)t)/CLOCKS_PER_SEC;
-    tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
-    client.setTp(tp);
+    if (elapsed > 0) {
+      tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
+      client.setTp(tp);
+      cout << "tp " << tp << endl;
+    }
+    this_thread::sleep_for(chrono::milliseconds(5));
   }
 }
 
@@ -150,10 +155,11 @@ int main() {
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
   UDP client = UDP(addr, dest, 0, 0);
+  UDP ack = UDP(addr, dest, 2, 2);
 
   // send file thread
   thread gopThread(sendGops, ref(client), gop);
-  thread tpThread(tp, ref(client));
+  thread tpThread(tp, ref(ack), ref(client));
   gopThread.join();
   tpThread.join();
   return 0;

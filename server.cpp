@@ -34,7 +34,7 @@ void receiveGops(UDP& server) {
     copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
     copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
     filename = nameBuffer;  // convert filename to string
-    filename = "/received/" + filename + ".bin";
+    filename = "./received/" + filename + ".bin";
     sscanf(sizeBuffer, "%d", &fileSize);  // convert filesize to string
     cout << fileSize << endl;
     ofstream file (filename, ios::out | ios::binary); // open file to begin writing
