@@ -59,7 +59,7 @@ void appendHeader(char *buffer, string header, int packetSize) {
 
 // read in binary file
 void sendFile(UDP udp, string filename, string header, int fileSize) {
-  //cout << header << endl;
+  cout << header << endl;
   char buffer[64000];
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
