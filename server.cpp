@@ -26,6 +26,7 @@ void tp(UDP& ack, UDP& server) {
 
 void receiveGops(UDP& server) {
   char buffer[64000], nameBuffer[12], sizeBuffer[12], headerBuffer[16];
+  char resp[] = "1";
   int bytesRec = 0, fileSize = 0, packetSize = 0, hI = 64000 - 16;
   string filename, header;
   // receive data
@@ -47,6 +48,7 @@ void receiveGops(UDP& server) {
       if (fileSize - bytesRec < 64000)
         packetSize = fileSize - bytesRec;
       bytesRec += server.receiveData(buffer, packetSize);
+      server.sendData(resp, 1);
       file.write(buffer, packetSize); // write packet to the file
       memset(buffer, 0, 64000); // clear the buffer
     }
@@ -57,7 +59,7 @@ void receiveGops(UDP& server) {
 }
 
 int main() {
-  char addr[] = "192.168.0.1";
+  char addr[] = "xxx.xxx.x.x";
   char dest[] = "192.168.0.2";
 
   UDP server = UDP(addr, dest, 0, 0);

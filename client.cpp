@@ -11,7 +11,6 @@
 #include <math.h>
 #include <functional>
 #include <time.h>
-#include <chrono>
 
 #include "udp.h"
 #include "gop.h"
@@ -60,7 +59,7 @@ void appendHeader(char *buffer, string header, int packetSize) {
 // read in binary file
 void sendFile(UDP udp, string filename, string header, int fileSize) {
   cout << header << endl;
-  char buffer[64000];
+  char buffer[64000], resp[1];
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
   // read the file
@@ -78,8 +77,8 @@ void sendFile(UDP udp, string filename, string header, int fileSize) {
       inFile.read(buffer, packetSize); // make space for header
     }
     udp.sendData(buffer, packetSize); // send the data to the server
+    UDP.receiveData(resp, 1); // wait for acknowledgement that server got data before moving on
     bytesRead += packetSize;
-    this_thread::sleep_for(chrono::milliseconds(50));
   }
   inFile.close(); // close the file
   return;
@@ -108,7 +107,6 @@ void sendGops(UDP& udp, GOP gop[]) {
   for (int i = 0; i < GOP_COUNT; i++) {
     for (int j = 0; j < TILE_COUNT; j++) {
       tp = udp.getTp(); // get the throughput value
-      cout << tp << endl;
       gopRow = gop[i].selGopRow(tp);  // select which tile row to send (corresponds to throughput value)
       tileValue = gop[i].getValue(j, gopRow); // get the tile's value
       if (tileValue != 100) {
@@ -119,7 +117,6 @@ void sendGops(UDP& udp, GOP gop[]) {
         header = getHeader(header, i, tileRow, tileColumn, fileSize);
         fileSize += header.length(); // add header length to the file size
         sendFile(udp, filename, header, fileSize);  // read in the file and send it to the server
-	//cout << "sent " << filename << endl;
       }
       // Don't send rest of the tiles. Move on to next gop
     }
@@ -141,7 +138,6 @@ void tp(UDP& ack, UDP &client) {
     if (elapsed > 0) {
       tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
       client.setTp(tp);
-      cout << "tp " << tp << endl;
     }
     this_thread::sleep_for(chrono::milliseconds(5));
   }
@@ -150,7 +146,7 @@ void tp(UDP& ack, UDP &client) {
 int main() {
   GOP gop[10];
   char addr[] = "192.168.0.2";
-  char dest[] = "192.168.0.1";
+  char dest[] = "xxx.xxx.x.x";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
