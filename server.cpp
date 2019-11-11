@@ -17,7 +17,7 @@
 using namespace std;
 
 void tp(UDP& ack, UDP& server) {
-  char buffer[100];
+  char buffer[64000];
   while (server.checkPulse() == true) {
     ack.receiveData(buffer, sizeof(buffer)); // wait for synchronous signal
     ack.sendData(buffer, sizeof(buffer));  // send acknowledgement
