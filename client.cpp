@@ -59,7 +59,7 @@ void appendHeader(char *buffer, string header, int packetSize) {
 // read in binary file
 void sendFile(UDP udp, string filename, string header, int fileSize) {
   cout << header << endl;
-  char buffer[64000], resp[1];
+  char buffer[64000], resp[2];
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
   // read the file
@@ -146,7 +146,7 @@ void tp(UDP& ack, UDP &client) {
 int main() {
   GOP gop[10];
   char addr[] = "192.168.0.2";
-  char dest[] = "xxx.xxx.x.x";
+  char dest[] = "192.168.0.1";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
