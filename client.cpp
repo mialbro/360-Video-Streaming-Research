@@ -125,8 +125,8 @@ void sendGops(UDP& udp, GOP gop[]) {
 }
 
 void tp(UDP& ack, UDP &client) {
-  char buffer[100];
-  memset(buffer, 'x', 100);
+  char buffer[64000];
+  memset(buffer, 'x', 64000);
   clock_t t;
   double tp = 0.0, elapsed = 0.0;
   while (ack.checkPulse() == true) {
