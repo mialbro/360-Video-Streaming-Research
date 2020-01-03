@@ -45,7 +45,7 @@ UDP::UDP(char *myAddress, char *destAddress, int port, char *state) {
 
 // send data to destaddr
 int UDP::sendData(char *data, int byteCount) {
-  int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, sizeof(destaddr));
+  int bytes = sendto(fd, data, byteCount, MSG_CONFIRM, (struct sockaddr*)&destaddr, sizeof(destaddr));
   return bytes;
 }
 
