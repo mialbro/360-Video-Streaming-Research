@@ -116,12 +116,13 @@ void sendGops(UDP& udp, GOP gop[]) {
 int main() {
   GOP gop[10];
   char myAddr[] = "192.168.0.2";
-  char destAddr[] = "192.168.0.3";
+  char destAddr[] = "192.168.1.228";
+  char state[] = "c";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
 
-  UDP client = UDP(myAddr, destAddr, 8080);
+  UDP client = UDP(myAddr, destAddr, 8080, state);
   // send file thread
   sendGops(client, gop);
   return 0;

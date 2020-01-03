@@ -11,9 +11,10 @@ private:
   int fd; // file descriptor
   bool pulse;
   double throughput;
-  struct sockaddr_in myaddr, destaddr;
+  struct sockaddr_in myaddr;
+  struct sockaddr_in destaddr;
 public:
-  UDP(char *myAddress, char *destAddress, int port);  // constructor
+  UDP(char *myAddress, char *destAddress, int port, char *state);  // constructor
   int sendData(char *data, int byteCount);  // send data to destaddr
   int receiveData(char *data, int byteCount); // listen for data
   int peek(char *data, int byteCount);  // peek at buffer

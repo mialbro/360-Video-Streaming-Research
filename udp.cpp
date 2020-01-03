@@ -10,7 +10,7 @@
 
 using namespace std;
 
-UDP::UDP(char *myAddress, char *destAddress, int port) {
+UDP::UDP(char *myAddress, char *destAddress, int port, char *state) {
   pulse = true; // alive
   if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
     perror("cannot create socket");
@@ -20,10 +20,14 @@ UDP::UDP(char *myAddress, char *destAddress, int port) {
   myaddr.sin_family = AF_INET;
   myaddr.sin_addr.s_addr = inet_addr(myAddress);
   myaddr.sin_port = htons(port);
-  if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
-    perror("bind failed");
+
+  if (state[0] == 'c') {
+    if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
+      perror("bind failed");
+    }
   }
   // set destination info
+  memset((char *)&destaddr, 0, sizeof(destaddr));
   destaddr.sin_family = AF_INET;
   destaddr.sin_addr.s_addr = inet_addr(destAddress);
   destaddr.sin_port = htons(port);
@@ -34,18 +38,11 @@ UDP::UDP(char *myAddress, char *destAddress, int port) {
   timeout.tv_usec = 0;
   setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char * ) & timeout, sizeof(timeout));
   setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char * ) & timeout, sizeof(timeout));
-
-  cout << "connecting..." << endl;
-  // connect to destination
-  if (connect(fd, (struct sockaddr *)&destaddr, sizeof(destaddr)) < 0) {
-    printf("ERROR!\n");
-  }
-  cout << "connected!" << endl;
 }
 
 // send data to destaddr
 int UDP::sendData(char *data, int byteCount) {
-  int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)NULL, sizeof(destaddr));
+  int bytes = sendto(fd, data, byteCount, 0, (struct sockaddr*)&destaddr, sizeof(destaddr));
   return bytes;
 }
 
@@ -53,7 +50,9 @@ int UDP::sendData(char *data, int byteCount) {
 int UDP::receiveData(char *data, int byteCount) {
   int bytes = 0;
   socklen_t destlen;
-  bytes = recvfrom(fd, data, byteCount, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
+  destlen = sizeof(destaddr);
+  bytes = recvfrom(fd, data, byteCount, MSG_WAITALL, (struct sockaddr*)&destaddr, &destlen);
+  cout << bytes << endl;
   return bytes;
 }
 
