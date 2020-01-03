@@ -25,6 +25,9 @@ UDP::UDP(char *myAddress, char *destAddress, int port, char *state) {
     if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
       perror("bind failed");
     }
+    else {
+      cout << "binded" << endl;
+    }
   }
   // set destination info
   memset((char *)&destaddr, 0, sizeof(destaddr));
