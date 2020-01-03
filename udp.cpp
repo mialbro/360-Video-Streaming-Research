@@ -21,7 +21,7 @@ UDP::UDP(char *myAddress, char *destAddress, int port, char *state) {
   myaddr.sin_addr.s_addr = inet_addr(myAddress);
   myaddr.sin_port = htons(port);
 
-  if (state[0] == 'c') {
+  if (state[0] == 's') {
     if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
       perror("bind failed");
     }
