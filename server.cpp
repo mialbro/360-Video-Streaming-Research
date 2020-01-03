@@ -55,8 +55,8 @@ void receiveGops(UDP& server) {
 }
 
 int main() {
-  char myAddr[] = "192.168.0.3";
-  char destAddr[] = "192.168.0.2";
+  char serveraddr[] = "192.168.1.228";
+  char clientaddr[] = "192.168.0.2";
   char state[] = "s";
 
   UDP server = UDP(myAddr, destAddr, 8080, state);
