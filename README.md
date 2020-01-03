@@ -1,4 +1,4 @@
-##360-Degree Video Streaming Research
+## 360-Degree Video Streaming Research
 
 ## RUN
 * __client:__ g++ -std=c++11 -pthread client.cpp udp.cpp gop.cpp 
