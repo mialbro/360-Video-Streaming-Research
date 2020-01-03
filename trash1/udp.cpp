@@ -28,19 +28,10 @@ UDP::UDP(char *myAddress, char *destAddress, int port) {
   destaddr.sin_addr.s_addr = inet_addr(destAddress);
   destaddr.sin_port = htons(port);
   throughput = 0.0;
-
-  struct timeval timeout;
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 0;
-  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char * ) & timeout, sizeof(timeout));
-  setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char * ) & timeout, sizeof(timeout));
-
-  cout << "connecting..." << endl;
   // connect to destination
   if (connect(fd, (struct sockaddr *)&destaddr, sizeof(destaddr)) < 0) {
     printf("ERROR!\n");
   }
-  cout << "connected!" << endl;
 }
 
 // send data to destaddr
@@ -52,8 +43,8 @@ int UDP::sendData(char *data, int byteCount) {
 // listen for data. Set destaddr
 int UDP::receiveData(char *data, int byteCount) {
   int bytes = 0;
-  socklen_t destlen;
-  bytes = recvfrom(fd, data, byteCount, MSG_WAITALL, (struct sockaddr*)NULL, NULL);
+  socklen_t len = 0;
+  bytes = recvfrom(fd, data, byteCount, 0, (struct sockaddr*)NULL, NULL);
   return bytes;
 }
 

@@ -16,11 +16,12 @@
 
 using namespace std;
 
-void readHeader(char *buffer, char *headerBuffer, char *nameBuffer, char *sizeBuffer, int hI) {
-  copy(&buffer[hI], &buffer[hI + 16], &headerBuffer[0]);
-  copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
-  copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
-  return;
+void tp(UDP& ack, UDP& server) {
+  char buffer[64000];
+  while (server.checkPulse() == true) {
+    ack.receiveData(buffer, sizeof(buffer)); // wait for synchronous signal
+    ack.sendData(buffer, sizeof(buffer));  // send acknowledgement
+  }
 }
 
 void receiveGops(UDP& server) {
@@ -31,11 +32,14 @@ void receiveGops(UDP& server) {
   // receive data
   while (1) {
     bytesRec = server.receiveData(buffer, 64000); // get the first packet
-    readHeader(buffer, headerBuffer, nameBuffer, sizeBuffer, hI);
+    copy(&buffer[hI], &buffer[hI+16], &headerBuffer[0]);
+    copy(&buffer[hI], &buffer[hI + 6], &nameBuffer[0]); // extract the filename from the header (gop-row-column)
+    copy(&buffer[hI + 8], &buffer[hI + 16], &sizeBuffer[0]); // extract the filesize from the header
+    filename = nameBuffer;  // convert filename to string
+    header = headerBuffer;
+    filename = "./received/" + filename + ".bin";
     sscanf(sizeBuffer, "%d", &fileSize);  // convert filesize to string
-    string str(nameBuffer);
-    filename = "./received/" + str + ".bin";  // convert filename to string
-    cout << "_" << (headerBuffer) << "_" << endl;
+    cout << "_" << header << "_" << endl;
     ofstream file (filename, ios::out | ios::binary); // open file to begin writing
     file.write(buffer, packetSize - 16);  // write the first packet - header, to the file
     // read in rest of the packets
@@ -45,7 +49,7 @@ void receiveGops(UDP& server) {
         packetSize = fileSize - bytesRec;
       bytesRec += server.receiveData(buffer, packetSize);
       file.write(buffer, packetSize); // write packet to the file
-      server.sendData(resp, strlen(resp));
+      server.sendData(resp, 1);
       memset(buffer, 0, 64000); // clear the buffer
     }
     memset(nameBuffer, 0, 12); // clear name buffer
@@ -55,11 +59,15 @@ void receiveGops(UDP& server) {
 }
 
 int main() {
-  char myAddr[] = "192.168.0.3";
-  char destAddr[] = "192.168.0.2";
+  char myAddr[] = "localhost";
+  char destAddr[] = "localhost";
 
-  UDP server = UDP(myAddr, destAddr, 8080);
-  receiveGops(server);
+  UDP server = UDP(myAddr, destAddr, 0, 0);
+  UDP ack = UDP(myAddr, destAddr, 2, 2);
+  thread gopThread(receiveGops, ref(server));
+  thread tpThread(tp, ref(ack), ref(server));
+  gopThread.join();
+  tpThread.join();
 
   return 0;
 }

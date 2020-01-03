@@ -11,6 +11,7 @@
 #include <math.h>
 #include <functional>
 #include <time.h>
+#include <stdlib.h>
 
 #include "udp.h"
 #include "gop.h"
@@ -38,14 +39,10 @@ void getInstr(string filename, GOP *gop) {
     }
     gop[i].sortTiles(); // sort the rows by importance
     gop[i].setRowCol(); // create row and column arrays
+    gop[i].setFilenames();  // set files
   }
 }
 
-// get the size of the current file
-int getFileSize(string filename) {
-  ifstream inFile(filename, ifstream::ate | ifstream::binary); // open file to read
-  return inFile.tellg();  // get the file size
-}
 
 // add the header: gop#-row-colum to the end of the first packet
 void appendHeader(char *buffer, string header, int packetSize) {
@@ -57,106 +54,75 @@ void appendHeader(char *buffer, string header, int packetSize) {
 }
 
 // read in binary file
-void sendFile(UDP udp, string filename, string header, int fileSize) {
-  cout << header << endl;
-  char buffer[64000], resp[2];
+void sendFile(UDP udp, string filename, string header, int fileSize, double *throughput) {
+  char dataBuffer[64000], respBuffer[64000];
+  char resp[] = "1";
   int bytesRead = 0, packetSize = 0;
   ifstream inFile(filename, ios::in | ios::binary); // open file to read
+  time_t startTime, endTime;
+  double sendTime = 0.0;
+  startTime = time(NULL);
   // read the file
   while (bytesRead < fileSize) {
-    memset(buffer, 0, 64000); // clear buffer
+    memset(dataBuffer, 0, 64000); // clear buffer
     packetSize = 64000;
     if (fileSize - bytesRead < 64000) // if near the end of the file
       packetSize = fileSize - bytesRead;
     // add header to buffer
     if (bytesRead == 0) {
-      inFile.read(buffer, packetSize - header.length()); // make space for header
-      appendHeader(buffer, header, packetSize - header.length()); // add header
+      inFile.read(dataBuffer, packetSize - header.length()); // make space for header
+      appendHeader(dataBuffer, header, packetSize - header.length()); // add header
     }
     else {
-      inFile.read(buffer, packetSize); // make space for header
+      inFile.read(dataBuffer, packetSize); // make space for header
     }
-    udp.sendData(buffer, packetSize); // send the data to the server
-    UDP.receiveData(resp, 1); // wait for acknowledgement that server got data before moving on
+    udp.sendData(dataBuffer, packetSize); // send the data to the server
+    udp.receiveData(respBuffer, strlen(resp)); // wait for acknowledgement that server got data before moving on
     bytesRead += packetSize;
+    //cout << respBuffer << endl;
   }
+  //cout << endl << endl << endl;
   inFile.close(); // close the file
+  endTime = time(NULL);
+  sendTime = endTime - startTime;
+  if (sendTime > 0)
+    *throughput = (fileSize * 8 * pow(10.0, -6.0)) / (sendTime / 2);
+  else
+    *throughput = 0;
+  //cout << *throughput << endl;
   return;
 }
 
-// get the filename
-string getFilename(string filename, int gop, int row, int column, int value) {
-  // set the file name
-  ostringstream oss;
-  oss << "./video_files/gop" << gop << "/AngelSplit" << row << "-" << column << "/qp" << value << "/str.bin";
-  filename = oss.str();
-  return filename;
-}
-
-string getHeader(string header, int gop, int row, int column, int fileSize) {
-  ostringstream oss;
-  oss << setw(2) << setfill('0') << gop << "-"  << row << "-" << column << "-" << setw(9) << setfill('0') << fileSize;
-  header = oss.str();
-  return header;
-}
 
 void sendGops(UDP& udp, GOP gop[]) {
-  double tp = 0.0;
-  int gopRow = 0, tileValue = 0, tileColumn = 0, tileRow = 0, fileSize = 0;
+  double throughput = 0.0;
+  int gopRow = 0, filesize = 0, tileValue = 0;
   string filename, header;
   for (int i = 0; i < GOP_COUNT; i++) {
     for (int j = 0; j < TILE_COUNT; j++) {
-      tp = udp.getTp(); // get the throughput value
-      gopRow = gop[i].selGopRow(tp);  // select which tile row to send (corresponds to throughput value)
+      gopRow = gop[i].selGopRow(throughput);  // select which tile row to send (corresponds to throughput value)
       tileValue = gop[i].getValue(j, gopRow); // get the tile's value
       if (tileValue != 100) {
-        tileRow = gop[i].getRow(j, gopRow); // get the row value for the tile
-        tileColumn = gop[i].getColumn(j, gopRow); // get the column value
-        filename = getFilename(filename, i, tileRow, tileColumn, tileValue);  // get filename
-        fileSize = getFileSize(filename); // get the size of the file
-        header = getHeader(header, i, tileRow, tileColumn, fileSize);
-        fileSize += header.length(); // add header length to the file size
-        sendFile(udp, filename, header, fileSize);  // read in the file and send it to the server
+        filename = gop[i].getFilename(j, gopRow);
+        header = gop[i].getHeader(j, gopRow);
+        filesize = gop[i].getFilesize(j, gopRow) + header.length();
+        sendFile(udp, filename, header, filesize, &throughput);  // read in the file and send it to the server
       }
       // Don't send rest of the tiles. Move on to next gop
     }
-  }
-  udp.kill();
-}
-
-void tp(UDP& ack, UDP &client) {
-  char buffer[64000];
-  memset(buffer, 'x', 64000);
-  clock_t t;
-  double tp = 0.0, elapsed = 0.0;
-  while (ack.checkPulse() == true) {
-    t = clock();
-    ack.sendData(buffer, sizeof(buffer));
-    ack.receiveData(buffer, sizeof(buffer));
-    t = clock() - t;
-    elapsed = ((float)t)/CLOCKS_PER_SEC;
-    if (elapsed > 0) {
-      tp = (sizeof(buffer) / elapsed) * pow(8.0, -6.0);
-      client.setTp(tp);
-    }
-    this_thread::sleep_for(chrono::milliseconds(5));
   }
 }
 
 int main() {
   GOP gop[10];
-  char addr[] = "192.168.0.2";
-  char dest[] = "192.168.0.1";
+  char myAddr[] = "192.168.0.2";
+  char destAddr[] = "192.168.0.3";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
-  UDP client = UDP(addr, dest, 0, 0);
-  UDP ack = UDP(addr, dest, 2, 2);
 
+  UDP client = UDP(myAddr, destAddr, 8080);
   // send file thread
-  thread gopThread(sendGops, ref(client), gop);
-  thread tpThread(tp, ref(ack), ref(client));
-  gopThread.join();
-  tpThread.join();
+  sendGops(client, gop);
   return 0;
 }

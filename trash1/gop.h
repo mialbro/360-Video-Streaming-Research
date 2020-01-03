@@ -24,9 +24,6 @@ public:
   int selGopRow(double throughput); // pick row of gops based on the throughput
   void displayRowSize();
   void setFilenames();
-  string getFilename(int index, int gopRow);
-  string getHeader(int index, int gopRow);
-  int getFilesize(int index, int gopRow);
 };
 
 #endif

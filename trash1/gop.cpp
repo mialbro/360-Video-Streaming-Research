@@ -76,6 +76,7 @@ void GOP::setFilenames() {
         headerOSS << setw(2) << setfill('0') << gop << "-"  << gopRow << "-" << gopColumn << "-" << setw(9) << setfill('0') << size;
         headers[i][j] = headerOSS.str();
         filesizes[i][j] = size;
+        cout << filenames[i][j] << " <-> " << headers[i][j] << endl;
       }
       else {
         filenames[i][j] = "";
@@ -146,16 +147,4 @@ int GOP::selGopRow(double throughput) {
     }
   }
   return rateIndex;
-}
-
-string GOP::getFilename(int index, int gopRow) {
-  return filenames[gopRow][index];
-}
-
-string GOP::getHeader(int index, int gopRow) {
-  return headers[gopRow][index];
-}
-
-int GOP::getFilesize(int index, int gopRow) {
-  return filesizes[gopRow][index];
 }
