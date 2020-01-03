@@ -77,6 +77,7 @@ void sendFile(UDP udp, string filename, string header, int fileSize, double *thr
       inFile.read(dataBuffer, packetSize); // make space for header
     }
     udp.sendData(dataBuffer, packetSize); // send the data to the server
+    cout << "sent data... waiting for ack" << endl;
     udp.receiveData(respBuffer, strlen(resp)); // wait for acknowledgement that server got data before moving on
     bytesRead += packetSize;
     //cout << respBuffer << endl;
