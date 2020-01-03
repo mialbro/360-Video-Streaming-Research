@@ -117,7 +117,7 @@ int main() {
   GOP gop[10];
   char clientaddr[] = "192.168.0.2";
   char serveraddr[] = "192.168.1.228";
-  char state[] = "c";
+  char state[] = "client";
 
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
