@@ -54,6 +54,7 @@ int UDP::receiveData(char *data, int byteCount) {
   int bytes = 0;
   socklen_t destlen;
   destlen = sizeof(destaddr);
+  cout << "waiting for data" << endl;
   bytes = recvfrom(fd, data, byteCount, MSG_WAITALL, (struct sockaddr*)&destaddr, &destlen);
   cout << bytes << endl;
   return bytes;
