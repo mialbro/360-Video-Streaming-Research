@@ -4,10 +4,10 @@
   1. Place gop video files in a folder called video\_files.
   2. Place gop instruction file in gop/gop\_data
   3. Create folder called received on server to hold received files.
- ## **Server**:
+ ## Server:
     g++ -std=c++11 server.cpp
     ./a.out
- ## **Client:**
+ ## Client:
     g++ -std=c++11 client.cpp gop.cpp
     ./a.out
 
