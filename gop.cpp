@@ -1,3 +1,8 @@
+/*
+  Author: Mark Robinson
+  Last Updated: 01/08/20
+*/
+
 #include <fstream>
 #include <iostream>
 #include <string>

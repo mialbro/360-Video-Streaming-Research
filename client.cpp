@@ -12,8 +12,11 @@
 #include <functional>
 #include <time.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
-#include "udp.h"
 #include "gop.h"
 
 #define GOP_COUNT 10
@@ -21,6 +24,29 @@
 #define BW_COUNT 4
 
 using namespace std;
+
+void setupClient(char *clientAddress, char *serverAddress, int *sockfd, int port, struct sockaddr_in *servaddr) {
+  if ((*sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    perror("socket creation failed");
+    exit(EXIT_FAILURE);
+  }
+  servaddr->sin_family = AF_INET;
+  servaddr->sin_port = htons(port);
+  servaddr->sin_addr.s_addr = INADDR_ANY;//inet_addr(serverAddress);
+}
+
+void sendData(int sockfd, struct sockaddr_in servaddr, char *data, int bytesToSend) {
+  sendto(sockfd, (const char*)data, bytesToSend, 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
+  return;
+}
+
+int receiveData(int sockfd, struct sockaddr_in servaddr, char *buffer, int bytesToRead) {
+  int bytes = 0;
+  socklen_t len = 0;
+  bytes = recvfrom(sockfd, (char *)buffer, bytesToRead, 0, (struct sockaddr *) &servaddr, &len);
+  buffer[bytes] = '\n';
+  return bytes;
+}
 
 void getInstr(string filename, GOP *gop) {
   int value = 0;
@@ -46,7 +72,7 @@ void getInstr(string filename, GOP *gop) {
 
 // add the header: gop#-row-colum to the end of the first packet
 void appendHeader(char *buffer, string header, int packetSize) {
-  char headerArr[header.length() + 1];
+  char headerArr[header.length()];
   header.copy(headerArr, header.length(), 0);
   for (int i = 0; i < header.length(); i++) {
     buffer[packetSize + i] = headerArr[i];
@@ -54,7 +80,7 @@ void appendHeader(char *buffer, string header, int packetSize) {
 }
 
 // read in binary file
-void sendFile(UDP udp, string filename, string header, int fileSize, double *throughput) {
+void sendFile(int sockfd, struct sockaddr_in servaddr, string filename, string header, int fileSize, double *throughput) {
   char dataBuffer[64000], respBuffer[64000];
   char resp[] = "1";
   int bytesRead = 0, packetSize = 0;
@@ -72,29 +98,26 @@ void sendFile(UDP udp, string filename, string header, int fileSize, double *thr
     if (bytesRead == 0) {
       inFile.read(dataBuffer, packetSize - header.length()); // make space for header
       appendHeader(dataBuffer, header, packetSize - header.length()); // add header
+      bytesRead = packetSize - header.length();
     }
     else {
       inFile.read(dataBuffer, packetSize); // make space for header
+      bytesRead += packetSize;
     }
-    udp.sendData(dataBuffer, packetSize); // send the data to the server
-    udp.receiveData(respBuffer, strlen(resp)); // wait for acknowledgement that server got data before moving on
-    bytesRead += packetSize;
-    //cout << respBuffer << endl;
+    sendData(sockfd, servaddr, dataBuffer, packetSize);
+    receiveData(sockfd, servaddr, respBuffer, strlen(resp));
   }
-  //cout << endl << endl << endl;
   inFile.close(); // close the file
   endTime = time(NULL);
-  sendTime = endTime - startTime;
+  sendTime = difftime(endTime, startTime);
   if (sendTime > 0)
-    *throughput = (fileSize * 8 * pow(10.0, -6.0)) / (sendTime / 2);
+    *throughput = (fileSize * pow(8.0, -6.0)) / (sendTime);
   else
     *throughput = 0;
-  //cout << *throughput << endl;
   return;
 }
 
-
-void sendGops(UDP& udp, GOP gop[]) {
+void sendGops(int sockfd, struct sockaddr_in servaddr, GOP gop[]) {
   double throughput = 0.0;
   int gopRow = 0, filesize = 0, tileValue = 0;
   string filename, header;
@@ -105,8 +128,8 @@ void sendGops(UDP& udp, GOP gop[]) {
       if (tileValue != 100) {
         filename = gop[i].getFilename(j, gopRow);
         header = gop[i].getHeader(j, gopRow);
-        filesize = gop[i].getFilesize(j, gopRow) + header.length();
-        sendFile(udp, filename, header, filesize, &throughput);  // read in the file and send it to the server
+        filesize = gop[i].getFilesize(j, gopRow);
+        sendFile(sockfd, servaddr, filename, header, filesize, &throughput);  // read in the file and send it to the server
       }
       // Don't send rest of the tiles. Move on to next gop
     }
@@ -115,15 +138,16 @@ void sendGops(UDP& udp, GOP gop[]) {
 
 int main() {
   GOP gop[10];
-  char clientaddr[] = "192.168.0.2";
-  char serveraddr[] = "192.168.1.228";
-  char state[] = "client";
-
+  char clientAddress[] = "127.0.0.1";
+  char serverAddress[] = "127.0.0.1";
+  struct sockaddr_in servaddr;
+  int sockfd = 0, port = 8081;
+  memset(&servaddr, 0, sizeof(servaddr));
+  setupClient(clientAddress, serverAddress, &sockfd, port, &servaddr);
   // store instruction data in classes
   getInstr("./gop/gop_data", gop);
 
-  UDP client = UDP(clientaddr, serveraddr, 8080, state);
   // send file thread
-  sendGops(client, gop);
+  sendGops(sockfd, servaddr, gop);
   return 0;
 }
