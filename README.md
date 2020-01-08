@@ -21,7 +21,7 @@ Read GOP instruction file: gop/gop/gop_data
    - Sort this array by the tile&#39;s value (the tile&#39;s priority). \*After this, the tiles with the highest priority will be in the front; therefore, they will be sent first. The tiles that we will not send wil be at the back of the array.
    - Create multidimensional arrays to hold the filenames and headers for each tile. \*The **header** is sent with the file and includes information about the tile being sent: position, name, and size.
       
-### Data Transfer:
+## Data Transfer:
 - For each Group-of-Pictures:
   - For each tile:
     - Break up the file, sending 64000 bytes at a time, untill you get to the last portion of the file, which may be less.
@@ -30,9 +30,9 @@ Read GOP instruction file: gop/gop/gop_data
 - Continuously calculate the time necessary to send the file and perform necessary operations to get the transfer rate in Megabits per second (throughput).
 - Use throughput to determine which set of tiles to send.
 
-## Server Overview
+# Server Overview
 Receives the gop tiles
-### Setup:
+## Setup:
 - For each Group-of\_pictures:
     - For each tile:
       - Listen for the first portion of the file which will also include the header.
