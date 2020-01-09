@@ -2,7 +2,7 @@
 
 ## Prerequisites:
   1. Place gop video files in a folder called video\_files.
-  2. Place gop instruction file in gop/gop\_data
+  2. Place gop instruction file in gop/gop\_data.
   3. Create folder called received on server to hold received files.
  ## Server:
     g++ -std=c++11 server.cpp
@@ -31,7 +31,7 @@ Read GOP instruction file: gop/gop/gop_data
 - Use throughput to determine which set of tiles to send.
 
 # Server Overview
-Receives the gop tiles
+Receives the gop tiles.
 ## Data Transfer:
 - For each Group-of\_pictures:
     - For each tile:
