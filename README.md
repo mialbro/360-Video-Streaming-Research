@@ -32,7 +32,7 @@ Read GOP instruction file: gop/gop/gop_data
 
 # Server Overview
 Receives the gop tiles
-## Setup:
+## Data Transfer:
 - For each Group-of\_pictures:
     - For each tile:
       - Listen for the first portion of the file which will also include the header.
